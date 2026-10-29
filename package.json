@@ -1,8 +1,8 @@
 {
-  "name": "beautiful-chat",
+  "name": "refined-chat",
   "version": "0.1.0",
   "private": true,
-  "description": "Paseo plugin: a beautiful chat for OMP tools, reasoning, prompts, and tasks",
+  "description": "Refined Chat: a customizable chat experience for Paseo coding agents",
   "license": "MIT",
   "scripts": {
     "typecheck": "tsc --noEmit"
