@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type { ViewProps } from "react-native";
 
-const STYLE_ELEMENT_ID = "beautiful-chat-glow";
+const STYLE_ELEMENT_ID = "refined-chat-glow";
 const ATTRIBUTE = "data-bcglow";
 const ACTIVE_ATTRIBUTE = "data-bcglow-on";
 
