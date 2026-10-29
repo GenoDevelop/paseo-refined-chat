@@ -224,7 +224,7 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         ]}
       >
         <Text style={[styles.title, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
-          Chat presentation
+          Refined Chat presentation
         </Text>
         <Text
           style={[styles.description, { color: tokens.foregroundMuted, fontFamily: tokens.fontUi }]}
