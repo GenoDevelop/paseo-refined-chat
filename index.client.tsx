@@ -39,7 +39,7 @@ export default function contribute(client: PluginClientContext) {
   // surface, panels, or Command Center item.
   client.addSettingsScreen({
     id: "chat-presentation",
-    title: "Chat presentation",
+    title: "Refined Chat presentation",
     icon: "Blocks",
     Component: BeautifulChatSettingsPage,
   });
