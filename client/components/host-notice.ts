@@ -1,4 +1,4 @@
-const STYLE_ELEMENT_ID = "beautiful-chat-host-notice";
+const STYLE_ELEMENT_ID = "refined-chat-host-notice";
 
 /**
  * The three background colours the host's `Notification` row uses, one per
