@@ -231,7 +231,7 @@ function scaleMetrics(metrics: VariantMetrics, scale: number): VariantMetrics {
 export function MarkdownView({ text, tokens, variant }: MarkdownViewProps) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
   const metrics = useMemo(
-    () => scaleMetrics(VARIANT_METRICS[variant], tokens.textScale),
+    () => scaleMetrics(VARIANT_METRICS[variant], tokens.scales.reply),
     [variant, tokens],
   );
   const styles = useMemo(() => buildStyles(tokens, variant, metrics), [tokens, variant, metrics]);
