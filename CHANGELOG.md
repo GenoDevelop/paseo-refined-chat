@@ -6,6 +6,9 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 ## [Unreleased]
 
 ### Fixed
+- Shell tool cards show the full command: the header is one line ending in an ellipsis instead of cutting the command at 55 characters, and the expanded card shows the whole command above its output.
+- PowerShell, pwsh, cmd and other command-line tools are drawn as shell cards with a `$ command` title. Previously they got the tool name as title and a `bash` label.
+- A tool result delivered as a list of text blocks (as Claude does) is shown instead of "Command completed without output."
 - A failed tool call now shows its error message. Providers that report the error as an object (for example Claude) previously rendered as `[object Object]` or as "Command completed without output."
 
 ## [0.2.0] - 2026-10-30

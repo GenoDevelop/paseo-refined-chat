@@ -34,3 +34,4 @@ Refined Chat also adapts individual fixes from open Beautiful Chat pull requests
 credited to their authors and ported by hand:
 
 - Failed tool-call error text: [PR #19](https://github.com/ABorakati/beautiful-chat/pull/19) by **philipphofmann**.
+- Full shell commands in tool cards: [PR #25](https://github.com/ABorakati/beautiful-chat/pull/25) by **Chengxin-Xu**.
