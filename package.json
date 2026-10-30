@@ -1,6 +1,6 @@
 {
   "name": "refined-chat",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Refined Chat: a customizable chat experience for Paseo coding agents",
   "license": "MIT",
@@ -22,5 +22,13 @@
     "react-native": "0.81.5",
     "typescript": "^5.9.3",
     "zod": "^4.4.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GenoDevelop/refined-chat.git"
+  },
+  "homepage": "https://github.com/GenoDevelop/refined-chat#readme",
+  "bugs": {
+    "url": "https://github.com/GenoDevelop/refined-chat/issues"
   }
 }
