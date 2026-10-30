@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { copyText } from "@getpaseo/plugin/client/react-native";
 import { Glyph } from "./glyph";
 import { unselectable } from "./selection";
+import { formatMessageTime } from "./message-time";
 import { radius } from "./theme-tokens";
 import type { ExtendedThemeTokens } from "./theme-tokens";
 
@@ -27,31 +28,6 @@ interface AssistantFooterProps {
 }
 
 const COPIED_MS = 1600;
-
-/**
- * Matches `utils/time.ts:formatMessageTimestamp`: bare time today, weekday and
- * time within the week, and a dated label beyond it.
- */
-export function formatReplyTime(date: Date, now: Date = new Date()): string {
-  const time = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  const sameDay =
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate();
-  if (sameDay) return time;
-
-  const days = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
-  if (days >= 0 && days < 7) {
-    return `${date.toLocaleDateString(undefined, { weekday: "long" })} ${time}`;
-  }
-
-  const label = date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  return `${label} ${time}`;
-}
 
 export function AssistantFooter({ text, at, tokens }: AssistantFooterProps) {
   const [copied, setCopied] = useState(false);
@@ -107,7 +83,7 @@ export function AssistantFooter({ text, at, tokens }: AssistantFooterProps) {
 
   // The label is recomputed on each render rather than ticked: the footer
   // re-renders whenever the turn does, and a stale minute is not worth a timer.
-  const time = formatReplyTime(at);
+  const time = formatMessageTime(at);
 
   return (
     <View style={styles.container}>

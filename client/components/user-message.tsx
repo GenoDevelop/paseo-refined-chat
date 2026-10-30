@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, Image } from "react-native";
 import { copyText } from "@getpaseo/plugin/client/react-native";
 import { Glyph } from "./glyph";
 import { Pop } from "./motion";
+import { formatMessageTime } from "./message-time";
 import { radius } from "./theme-tokens";
 import type { ExtendedThemeTokens } from "./theme-tokens";
 import { selectableSurface } from "./selection";
@@ -40,13 +41,6 @@ function formatTokens(value: number): string {
   // `toFixed(1)` would report 97.8 for a value that is 97.9k.
   if (value < 1_000_000) return `${(Math.round(value / 100) / 10).toFixed(1)}k`;
   return `${(Math.round(value / 100_000) / 10).toFixed(1)}M`;
-}
-
-function formatClock(value: Date): string {
-  const hh = String(value.getHours()).padStart(2, "0");
-  const mm = String(value.getMinutes()).padStart(2, "0");
-  const ss = String(value.getSeconds()).padStart(2, "0");
-  return `${hh}:${mm}:${ss}`;
 }
 
 /** One labelled figure. A missing count is omitted, never shown as zero. */
@@ -196,7 +190,7 @@ export function UserMessage({
           </Text>
           {timestamp ? (
             <Text selectable style={styles.clock}>
-              {formatClock(timestamp)}
+              {formatMessageTime(timestamp)}
             </Text>
           ) : null}
           <Pressable
