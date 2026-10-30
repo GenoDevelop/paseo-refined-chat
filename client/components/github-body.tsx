@@ -80,8 +80,8 @@ export function GitHubBody({ data, tokens, running }: GitHubBodyProps) {
         },
         terminalText: {
           fontFamily: tokens.fontMono,
-          fontSize: tokens.fs(11.5),
-          lineHeight: tokens.fs(17),
+          fontSize: tokens.fs(11.5, "code"),
+          lineHeight: tokens.fs(17, "code"),
           color: tokens.foregroundMuted,
         },
         note: { fontFamily: tokens.fontUi, fontSize: tokens.fs(11), color: tokens.foregroundSubtle },
