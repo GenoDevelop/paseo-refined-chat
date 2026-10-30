@@ -27,18 +27,32 @@ that follow the active Paseo theme.
 
 ![A prompt, a tool call, a finished background job, and the reply that closes the turn](images/hero.png)
 
-Every screenshot here is a capture of the real component, rendered by the harness in `.showcase/`.
+The screenshots illustrate the original chat surfaces using sample data; they do not yet show every new typography setting. Source images come from the Beautiful Chat baseline and are retained with attribution.
+The baseline showcase component was rendered using `.showcase/`.
 [One whole turn, top to bottom](images/thread.png) shows the cards in the order the timeline draws
 them.
 
 ## Install
 
+Before the plugin is approved in the Paseo catalog, install directly from GitHub:
+
 ```bash
-paseo plugin install GenoDevelop/refined-chat
+paseo plugin add git:GenoDevelop/refined-chat --ref v0.2.0
 ```
 
-The manifest requires Paseo `>=0.8.0`. Open **Settings → Plugins → Refined Chat**
+The version tag above is available **after** the GitHub release is published.
+To test the latest main branch instead, omit `--ref v0.2.0`.
+
+After registry approval, the shorter catalog command becomes available:
+
+```bash
+paseo plugin add GenoDevelop/refined-chat
+```
+
+Requires **Paseo 0.11.0 or later**. Open **Settings → Plugins → Refined Chat**
 for typography, card behavior, accent, fonts and other presentation options.
+Do not run Refined Chat and Beautiful Chat simultaneously, because their
+timeline transformations overlap.
 
 ### Typography controls
 
