@@ -35,3 +35,4 @@ credited to their authors and ported by hand:
 
 - Failed tool-call error text: [PR #19](https://github.com/ABorakati/beautiful-chat/pull/19) by **philipphofmann**.
 - Full shell commands in tool cards: [PR #25](https://github.com/ABorakati/beautiful-chat/pull/25) by **Chengxin-Xu**.
+- Edit diff computed from old and new text: [PR #8](https://github.com/ABorakati/beautiful-chat/pull/8) by **Moyf**. The diff builder is used as written; line numbers, line statistics and in-line highlighting are original to Refined Chat.

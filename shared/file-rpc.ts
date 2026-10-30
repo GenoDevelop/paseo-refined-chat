@@ -21,3 +21,26 @@ export const revealPathRpc = defineRpc({
     error: z.string().nullable(),
   }),
 });
+
+/**
+ * Finds where a piece of text sits in a file.
+ *
+ * An edit reaches the chat as the text it replaced and the text it wrote, with
+ * no position, so its diff cannot say which lines it touched. The daemon can
+ * read the file: when the written text occurs exactly once, its first line is
+ * where the edit landed. Anything else (missing file, no match, several
+ * matches) answers `null`, and the card draws no line numbers rather than a
+ * wrong one.
+ */
+export const locateTextRpc = defineRpc({
+  // The host accepts lower-case, dotted RPC names only.
+  name: "file.locate",
+  input: z.object({
+    cwd: z.string(),
+    path: z.string(),
+    text: z.string(),
+  }),
+  output: z.object({
+    line: z.number().nullable(),
+  }),
+});
