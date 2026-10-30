@@ -163,6 +163,24 @@ export function extractContentText(container: Record<string, unknown>): string |
   return undefined;
 }
 
+/**
+ * The readable message in a failed call's `error`, which each provider shapes
+ * its own way. Claude hands over the raw tool result with the text in
+ * `content`. `String()` on that record printed "[object Object]".
+ */
+export function extractErrorText(error: unknown): string | null {
+  if (!error) return null;
+  if (typeof error === "string") return error;
+  if (typeof error !== "object") return String(error);
+  const record = error as Record<string, unknown>;
+  const text =
+    asString(record.content) ??
+    asString(record.message) ??
+    asString(record.text) ??
+    extractContentText(record);
+  return text ?? JSON.stringify(error);
+}
+
 /** Eval times the whole run and reports it beside the cells. */
 export function extractEvalDuration(output: unknown): number | undefined {
   if (!output || typeof output !== "object") return undefined;
@@ -458,6 +476,12 @@ export function LiveToolCallRenderer({
           (output && typeof output === "object"
             ? extractContentText(output as Record<string, unknown>)
             : undefined);
+    // A failed call can carry its message beside the detail rather than in it,
+    // which left the card saying the command printed nothing.
+    const errorText =
+      data.status === "failed" && typeof data.error === "string" && data.error.trim()
+        ? data.error
+        : undefined;
     const durationMs =
       typeof detail.durationMs === "number" ? detail.durationMs : extractEvalDuration(output);
     let toolKind: ToolCallKind = "bash";
@@ -569,7 +593,7 @@ export function LiveToolCallRenderer({
       // would draw the request and the reply a second time.
       code: toolKind === "github" ? undefined : code,
       diff,
-      output: toolKind === "github" || evalCells.length > 0 ? undefined : outputText,
+      output: toolKind === "github" || evalCells.length > 0 ? undefined : outputText || errorText,
       cells: evalCells.length > 0 ? evalCells : undefined,
       askOptions: askOptions.length > 0 ? askOptions : undefined,
       askAnswer: askAnswer.length > 0 ? askAnswer : undefined,
