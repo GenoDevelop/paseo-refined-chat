@@ -112,7 +112,7 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
         },
         titleText: {
           fontFamily: tokens.fontUi,
-          fontSize: 13,
+          fontSize: tokens.fs(13),
           fontWeight: "600",
           color: tokens.foreground,
         },
@@ -123,7 +123,7 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
           marginTop: 2,
         },
         badge: {
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           fontFamily: tokens.fontUi,
           paddingHorizontal: 5,
           paddingVertical: 1,
@@ -132,7 +132,7 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
           color: tokens.foregroundMuted,
         },
         modelBadge: {
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           fontFamily: tokens.fontUi,
           color: tokens.foregroundMuted,
         },
@@ -148,7 +148,7 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
         },
         statusText: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           fontWeight: "600",
           color: tokens.accent,
         },
@@ -198,26 +198,26 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
         },
         stepTitle: {
           fontFamily: tokens.fontUi,
-          fontSize: 13,
+          fontSize: tokens.fs(13),
           fontWeight: "600",
           color: tokens.foreground,
         },
         stepDuration: {
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           color: tokens.foregroundSubtle,
           fontFamily: tokens.fontUi,
         },
         stepContent: {
           fontFamily: tokens.fontUi,
           marginTop: 6,
-          fontSize: 12,
-          lineHeight: 18,
+          fontSize: tokens.fs(12),
+          lineHeight: tokens.fs(18),
           color: tokens.foregroundMuted,
         },
         footer: {
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           paddingTop: 8,
           marginTop: 8,
           borderTopWidth: 1,
@@ -225,8 +225,13 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
         },
         footerText: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           color: tokens.foregroundSubtle,
+        },
+        collapseLink: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 3,
         },
       }),
     [tokens, isThinking],
@@ -367,6 +372,20 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
             <Text selectable style={styles.footerText}>
               Total Tokens: {data.totalTokens}
             </Text>
+            {/* The fold control also lives at the bottom edge: a stream that
+                ran long puts the header a screen away. */}
+            <Pressable
+              onPress={() => setIsExpanded(false)}
+              style={styles.collapseLink}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Collapse"
+            >
+              <Text selectable={false} style={styles.footerText}>
+                Collapse
+              </Text>
+              <Glyph name="ChevronUp" size={13} color={tokens.foregroundSubtle} />
+            </Pressable>
           </View>
         </View>
       )}
