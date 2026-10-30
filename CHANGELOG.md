@@ -18,6 +18,8 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 - Read, edit and write cards are titled with the file name alone; the tool is already named by the pill beside it.
 
 ### Changed
+- Tool-card icons breathe only while the call is running; finished cards are still, which stops an animation loop on every card in a long chat.
+- Turning "Frosted glass" off now drops the backdrop blur itself, not only the translucent tint, so surfaces are no longer re-filtered on every repaint.
 - The time under a prompt or a reply always includes seconds, and carries the weekday (within a week) or the date (older) when the message is not from today. Prompts previously showed only the clock.
 
 ### Fixed
