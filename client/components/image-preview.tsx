@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, Pressable, Image, StyleSheet } from "react-native";
+import { View, Text, Pressable, Image, Platform, StyleSheet } from "react-native";
+import type { ViewStyle } from "react-native";
+import { ImageViewer } from "./image-viewer";
 import { Glyph } from "./glyph";
 import { radius } from "./theme-tokens";
 import type { ExtendedThemeTokens } from "./theme-tokens";
@@ -14,7 +16,15 @@ interface ImagePreviewProps {
   tokens: ExtendedThemeTokens;
   /** Shows the file in the machine's own file manager. */
   onReveal?: () => void;
+  /**
+   * What the header says instead of the path: the agent's own description of an
+   * image in a reply. Without it the header names the file, as a read does.
+   */
+  caption?: string;
 }
+
+/** A pointer that says the picture opens; only the web has one to change. */
+const ZOOM_CURSOR = (Platform.OS === "web" ? { cursor: "zoom-in" } : {}) as ViewStyle;
 
 /** The tallest a thumbnail grows. Past this the image scales down to fit. */
 const MAX_HEIGHT = 280;
@@ -37,13 +47,20 @@ function formatBytes(bytes: number): string {
  * falls back to a fixed box when the header could not be read: an image that
  * loads but reports no size still has to occupy an honest amount of room.
  */
-export function ImagePreview({ path, file, tokens, onReveal }: ImagePreviewProps) {
+export function ImagePreview({ path, file, tokens, onReveal, caption }: ImagePreviewProps) {
   const [shown, setShown] = useState(true);
+  const [enlarged, setEnlarged] = useState(false);
 
   const styles = useMemo(
     () =>
       StyleSheet.create({
+        // The card is as wide as its picture, not as wide as the column: a small
+        // image in a wide card is mostly empty frame. The floor keeps the header,
+        // with its size chips, from being squeezed to nothing.
         container: {
+          alignSelf: "flex-start",
+          maxWidth: "100%",
+          minWidth: 260,
           borderRadius: radius.block,
           borderWidth: 1,
           borderColor: tokens.borderSubtle,
@@ -140,10 +157,11 @@ export function ImagePreview({ path, file, tokens, onReveal }: ImagePreviewProps
       : styles.image;
 
   return (
-    <View style={styles.container}>
+    // With no known size there is no width to hug, so the card spans the column.
+    <View style={[styles.container, ratio === null ? { alignSelf: "stretch" } : null]}>
       <View style={styles.header}>
         <Glyph name="Image" size={13} color={tokens.foregroundMuted} />
-        {onReveal ? (
+        {onReveal && !caption ? (
           <Pressable
             accessibilityRole="link"
             accessibilityLabel={`Show ${path} in the file manager`}
@@ -155,7 +173,7 @@ export function ImagePreview({ path, file, tokens, onReveal }: ImagePreviewProps
           </Pressable>
         ) : (
           <Text selectable style={styles.plainPath} numberOfLines={1}>
-            {path}
+            {caption ?? path}
           </Text>
         )}
         <View style={styles.spacer} />
@@ -185,13 +203,32 @@ export function ImagePreview({ path, file, tokens, onReveal }: ImagePreviewProps
         <Text style={styles.message}>{file.error ?? "The image could not be read."}</Text>
       ) : shown ? (
         <View style={styles.canvas}>
-          <Image
-            source={{ uri: file.dataUri }}
-            style={frame}
-            resizeMode="contain"
-            accessibilityLabel={path}
-          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${caption ?? path} full size`}
+            onPress={() => setEnlarged(true)}
+            style={[frame, ZOOM_CURSOR]}
+          >
+            <Image
+              source={{ uri: file.dataUri }}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="contain"
+              accessibilityLabel={caption ?? path}
+            />
+          </Pressable>
         </View>
+      ) : null}
+
+      {file?.dataUri ? (
+        <ImageViewer
+          visible={enlarged}
+          uri={file.dataUri}
+          label={caption ?? path}
+          details={chips.join(" · ") || undefined}
+          width={file.width}
+          height={file.height}
+          onClose={() => setEnlarged(false)}
+        />
       ) : null}
     </View>
   );

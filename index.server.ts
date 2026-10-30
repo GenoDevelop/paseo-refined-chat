@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { open, readFile, stat, type FileHandle } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
-import { locateTextRpc, revealPathRpc } from "./shared/file-rpc";
+import { locateTextRpc, revealPathRpc, stripSelector } from "./shared/file-rpc";
 import { type HighlightLine, type HighlightToken, highlightRpc } from "./shared/highlight-rpc";
 import { imageRpc } from "./shared/image-rpc";
 
@@ -85,16 +85,6 @@ function readImageSize(bytes: Buffer, kind: string): { width: number; height: nu
   }
 
   return null;
-}
-
-/** Strips the selector a tool appends to a path, such as `main.ts:55-85`. */
-function stripSelector(path: string): string {
-  const trimmed = path.trim();
-  const windowsDrive = /^[a-zA-Z]:[\\/]/.test(trimmed);
-  const head = windowsDrive ? trimmed.slice(0, 3) : "";
-  const tail = windowsDrive ? trimmed.slice(3) : trimmed;
-  const cut = tail.search(/[\s:?#]/);
-  return cut === -1 ? trimmed : head + tail.slice(0, cut);
 }
 
 /**

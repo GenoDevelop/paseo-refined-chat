@@ -532,6 +532,14 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         />
 
         <ToggleRow
+          title="Load remote images automatically (at your own risk)"
+          description="Off: an image an agent links over http(s) waits behind a Load button that names the server. On: it loads without asking. The agent writes the address, so a prompt injection can make your machine request a URL that carries data from the chat, and the server sees your IP address. Turn this on only if you accept that."
+          value={preferences.loadRemoteImages}
+          onChange={(loadRemoteImages) => updateEnhancerPreferences({ loadRemoteImages })}
+          tokens={tokens}
+        />
+
+        <ToggleRow
           title="Auto-collapse tools"
           description="Folds a tool card back up once it finishes. A failed call stays open, and a card you opened or closed yourself keeps its state."
           value={preferences.autoCollapseTools}

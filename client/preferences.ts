@@ -45,6 +45,12 @@ export interface EnhancerPreferences {
   shellMaxLines: number;
   /** Lines of code, file reads and diffs shown before the rest folds. Zero shows all. */
   codeMaxLines: number;
+  /**
+   * Draws an `http(s)` image a reply links without waiting for a click. The
+   * agent writes the address, so a prompt injection can use it to send data off
+   * the machine: off by default, and the reader's own risk when turned on.
+   */
+  loadRemoteImages: boolean;
   frostedGlass: boolean;
   /**
    * A light that follows the pointer across a card. Web and desktop only:
@@ -93,6 +99,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   codeScale: 1,
   shellMaxLines: 20,
   codeMaxLines: 30,
+  loadRemoteImages: false,
   frostedGlass: true,
   pointerGlow: true,
   enhancedUserBubble: true,
@@ -129,6 +136,8 @@ function loadPreferences(): EnhancerPreferences {
       codeScale: sanitizeTypographyScale(candidate.codeScale),
       shellMaxLines: sanitizeLineLimit(candidate.shellMaxLines, DEFAULT_PREFERENCES.shellMaxLines),
       codeMaxLines: sanitizeLineLimit(candidate.codeMaxLines, DEFAULT_PREFERENCES.codeMaxLines),
+      // Only an explicit `true` counts: anything else stays the safe default.
+      loadRemoteImages: candidate.loadRemoteImages === true,
       frostedGlass:
         typeof candidate.frostedGlass === "boolean"
           ? candidate.frostedGlass
