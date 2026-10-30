@@ -54,6 +54,9 @@ Enter any percentage between **50% and 300%**, including decimals (for example
 Each starts at **100%** and persists independently per client. Inline code
 inside paragraphs follows the reply scale to keep line wrapping natural.
 The values are multipliers, not fixed presets: no four-choice limit.
+**Assistant replies** apply to Refined Chat's Markdown renderer; if you switch
+**Assistant markdown** off, Paseo takes over rendering and its own appearance
+settings control that text.
 
 ### Optional reading behavior
 
