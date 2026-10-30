@@ -6,6 +6,7 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 ## [Unreleased]
 
 ### Added
+- Folding also covers stderr, eval output and code, MCP input and response, GitHub replies, files and requests, and subagent prompts, under the same two settings. Hub cards are left whole.
 - Long tool output folds after a finished call: command output keeps its start and end (default 20 lines) and file reads, writes and diffs keep their first lines (default 30), each behind a "Show N more lines" control. Both limits are settings; 0 turns folding off. Copy still copies everything, and the find bar opens the folded blocks that contain the search and folds them again on close.
 - Edit cards show a diff for providers that report an edit as the replaced and replacement text only (Claude, Codex, opencode), instead of a bare "[Edit: diff applied]".
 - Edit and write cards show `+X -Y` beside the file name; read cards show how many lines came back, or which (`lines 120-179`) when the read began mid-file.

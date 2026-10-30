@@ -3,9 +3,9 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Glyph } from "./glyph";
 import { radius } from "./theme-tokens";
 import type { ExtendedThemeTokens } from "./theme-tokens";
-import { SyntaxHighlightBlock, renderTerminalOutput } from "./syntax-highlight";
+import { SyntaxHighlightBlock } from "./syntax-highlight";
+import { FoldedOutput } from "./folded-output";
 import { unselectable } from "./selection";
-import { selectionCodeText } from "./selection-actions";
 import { openLink } from "./open-link";
 import type { GitHubToolData } from "../../shared/contracts";
 
@@ -13,6 +13,10 @@ interface GitHubBodyProps {
   data: GitHubToolData | undefined;
   tokens: ExtendedThemeTokens;
   running: boolean;
+  /** Lines of a text reply kept before the middle folds; 0 shows all. */
+  shellMaxLines?: number;
+  /** Lines of a file or request kept before the rest folds; 0 shows all. */
+  codeMaxLines?: number;
 }
 
 /**
@@ -25,7 +29,13 @@ interface GitHubBodyProps {
  * auditing occasionally, and the host offers no other view of it, but it
  * repeats what the header just said.
  */
-export function GitHubBody({ data, tokens, running }: GitHubBodyProps) {
+export function GitHubBody({
+  data,
+  tokens,
+  running,
+  shellMaxLines = 0,
+  codeMaxLines = 0,
+}: GitHubBodyProps) {
   const [showRequest, setShowRequest] = useState(false);
 
   const styles = useMemo(
@@ -121,6 +131,7 @@ export function GitHubBody({ data, tokens, running }: GitHubBodyProps) {
           language={data.file.language ?? "text"}
           filename={data.file.name}
           tokens={tokens}
+          maxLines={codeMaxLines}
           showLineNumbers
           compact
         />
@@ -149,9 +160,12 @@ export function GitHubBody({ data, tokens, running }: GitHubBodyProps) {
 
       {data.text ? (
         <View style={styles.terminal}>
-          <Text selectable {...selectionCodeText} style={styles.terminalText}>
-            {renderTerminalOutput(data.text, tokens)}
-          </Text>
+          <FoldedOutput
+            text={data.text}
+            limit={shellMaxLines}
+            tokens={tokens}
+            textStyle={styles.terminalText}
+          />
         </View>
       ) : null}
 
@@ -185,7 +199,13 @@ export function GitHubBody({ data, tokens, running }: GitHubBodyProps) {
             <Text style={styles.toggleLabel}>request</Text>
           </Pressable>
           {showRequest ? (
-            <SyntaxHighlightBlock code={data.request} language="json" tokens={tokens} compact />
+            <SyntaxHighlightBlock
+              code={data.request}
+              language="json"
+              tokens={tokens}
+              maxLines={codeMaxLines}
+              compact
+            />
           ) : null}
         </View>
       ) : null}

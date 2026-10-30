@@ -98,8 +98,8 @@ finished; a running call is never folded.
 
 | Setting | Default | What it folds |
 | --- | --- | --- |
-| **Long terminal output** | 20 lines | Command output keeps its start and its end and folds the middle, because the error and the summary are at the end. |
-| **Long code and diffs** | 30 lines | File reads, writes and diffs show their first lines and fold the rest. |
+| **Long terminal output** | 20 lines | Text results (command output, errors, eval output, GitHub replies) keep their start and their end and fold the middle, because the error and the summary are at the end. |
+| **Long code and diffs** | 30 lines | File reads, writes, diffs and structured data (MCP input and response, GitHub files and requests, eval code, subagent prompts) show their first lines and fold the rest. Hub cards are not folded. |
 
 Enter any whole number; `0` never folds. A block that would hide fewer than five
 lines stays whole. **Copy** always copies everything, and the find bar (Ctrl+F)
