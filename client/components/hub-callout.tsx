@@ -1343,8 +1343,8 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         },
         codeText: {
           fontFamily: tokens.fontMono,
-          fontSize: tokens.fs(11),
-          lineHeight: tokens.fs(16),
+          fontSize: tokens.fs(11, "code"),
+          lineHeight: tokens.fs(16, "code"),
           color: tokens.foregroundMuted,
         },
         moreLabel: {
