@@ -34,14 +34,14 @@ export interface ExtendedThemeTokens {
   fontCode: string;
   fontUi: string;
 
-  /** The user's text size multiplier; 1 renders the authored sizes. */
-  textScale: number;
+  /** Per-area font multipliers; 1 = 100%. */
+  scales: Readonly<Record<"reply" | "tool" | "code", number>>;
   /**
-   * Scales a font size or text line height by `textScale`, snapped to half
-   * points so derived line-height math stays tidy. Layout dimensions (chip
-   * heights, gutters) do not go through this: only what a reader reads.
+   * Scale typography in the chosen area. Defaults to tool UI for legacy
+   * callouts; Markdown uses the reply scale and code surfaces pass "code".
+   * Two decimal places preserve fractional percentages without pixel drift.
    */
-  fs(base: number): number;
+  fs(base: number, area?: "reply" | "tool" | "code"): number;
 
   // Surfaces
   surface0: string;
@@ -183,7 +183,11 @@ export function buildThemeTokens(
   const danger = colors.statusDanger;
   const tint = isDark ? 0.1 : 0.08;
   const edge = isDark ? 0.22 : 0.18;
-  const textScale = preferences.textScale;
+  const scales = {
+    reply: preferences.replyScale,
+    tool: preferences.toolScale,
+    code: preferences.codeScale,
+  };
 
   return {
     isDark,
@@ -191,8 +195,9 @@ export function buildThemeTokens(
     fontCode: preferences.codeFont === "plain" ? fontMono : fontCode,
     fontUi: preferences.uiFont === "system" ? "System" : fontUi,
 
-    textScale,
-    fs: (base) => Math.round(base * textScale * 2) / 2,
+    scales,
+    fs: (base, area = "tool") =>
+      Math.round(base * scales[area] * 100) / 100,
 
     surface0: colors.surface0,
     surface1: withAlpha(fg, isDark ? 0.03 : 0.025),
