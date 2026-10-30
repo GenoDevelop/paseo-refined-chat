@@ -4,9 +4,9 @@
 > created by ABorakati. The original Git history and MIT license are retained.
 > Refined Chat is not affiliated with or endorsed by the upstream developer or Paseo.
 >
-> **Initial baseline:** project identity, attribution, documentation and licensing.
-> Upstream [PR #9](https://github.com/ABorakati/beautiful-chat/pull/9) and our experimental typography
-> patches have **not** been incorporated.
+> **Extended reading controls:** Refined Chat adapts the typography and card
+> improvements proposed by [Moyf in Beautiful Chat PR #9](https://github.com/ABorakati/beautiful-chat/pull/9),
+> with independently adjustable percentage sizes for replies, tools and code.
 >
 > This plugin and Beautiful Chat both intercept Paseo timeline items.
 > Disable the original before enabling Refined Chat.
@@ -37,8 +37,34 @@ them.
 paseo plugin install GenoDevelop/refined-chat
 ```
 
-The manifest requires Paseo `>=0.8.0`. Open **Settings → Plugins → Refined Chat** for the
-accent, fonts, frosted glass, and prompt bubble options.
+The manifest requires Paseo `>=0.8.0`. Open **Settings → Plugins → Refined Chat**
+for typography, card behavior, accent, fonts and other presentation options.
+
+### Typography controls
+
+Enter any percentage between **50% and 300%**, including decimals (for example
+`112.5`), then press Enter or click outside the field to apply it:
+
+| Control | What it scales |
+| --- | --- |
+| **Assistant replies** | Markdown text, headings, lists and their readable spacing |
+| **Tool cards** | Tool UI, labels, reasoning, checklists, statuses and metadata |
+| **Code and terminal** | Fenced code, diffs, line numbers and terminal/code output |
+
+Each starts at **100%** and persists independently per client. Inline code
+inside paragraphs follows the reply scale to keep line wrapping natural.
+The values are multipliers, not fixed presets: no four-choice limit.
+
+### Optional reading behavior
+
+- **Auto-collapse tools:** fold a running tool card when it completes, unless you
+  have already interacted with it. Failures and questions stay accessible.
+- **Collapse thinking:** start reasoning traces folded; open them to follow along.
+- Expanded cards and reasoning traces provide an additional collapse control
+  at the bottom, so you do not have to scroll back to their header.
+
+Both toggles are **off by default** to preserve the original Beautiful Chat
+behavior. You can enable either in the plugin settings.
 
 ---
 
@@ -170,6 +196,11 @@ Devicon brand marks, and the file-manager link.
 | Accent colour          | Follow the Paseo theme, or pick Jade, Violet, Amber, or Rose.      |
 | Interface font         | Embedded Inter, or the system interface face.                      |
 | Code glyphs            | Iosevka with ligatures, or literal glyphs.                         |
+| Assistant replies      | Freely editable 50–300% text size (decimals supported).             |
+| Tool cards             | Independent 50–300% card text size.                                 |
+| Code and terminal      | Independent 50–300% code/diff/terminal text size.                   |
+| Auto-collapse tools    | Optional; off by default, respects manual expansion.               |
+| Collapse thinking      | Optional; off by default.                                          |
 | Frosted glass          | Blur card surfaces, or paint them solid.                           |
 | Enhanced prompt bubble | Off hands prompts back to Paseo, whose bubble shows pasted images. |
 | Assistant markdown     | Off hands replies back to Paseo's own markdown renderer.           |
@@ -316,6 +347,13 @@ esbuild .showcase/showcase.tsx --bundle --outfile=.showcase/showcase.js --jsx=au
 
 Then serve `.showcase/` and capture each `#shot-*` element.
 
-## License
+## Credits and license
 
-MIT
+The original Beautiful Chat implementation is by **ABorakati**.
+Refined Chat's enhanced scaling and folding capabilities adapt work
+contributed by **[Moyf](https://github.com/Moyf)** in
+[upstream PR #9](https://github.com/ABorakati/beautiful-chat/pull/9).
+Changes are licensed under MIT, with separate SIL OFL notices for fonts.
+See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+
+All checks are currently run locally; no hosted CI is configured.
