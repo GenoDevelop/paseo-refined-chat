@@ -141,8 +141,8 @@ export function NoticeCallout({ data, tokens }: NoticeCalloutProps): React.React
         },
         dataText: {
           fontFamily: tokens.fontMono,
-          fontSize: tokens.fs(11.5),
-          lineHeight: tokens.fs(17),
+          fontSize: tokens.fs(11.5, "code"),
+          lineHeight: tokens.fs(17, "code"),
           color: tokens.foregroundMuted,
         },
       }),
