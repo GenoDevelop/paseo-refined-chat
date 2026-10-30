@@ -29,3 +29,8 @@ into independent, user-entered percentage controls for assistant
 replies, tool cards and code. It also makes automated folding opt-in.
 
 The original MIT license and attribution remain in [LICENSE](LICENSE).
+
+Refined Chat also adapts individual fixes from open Beautiful Chat pull requests,
+credited to their authors and ported by hand:
+
+- Failed tool-call error text: [PR #19](https://github.com/ABorakati/beautiful-chat/pull/19) by **philipphofmann**.

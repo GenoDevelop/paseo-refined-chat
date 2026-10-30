@@ -3,6 +3,11 @@
 All notable changes to Refined Chat are documented here.
 The project is an independent MIT-licensed fork of Beautiful Chat.
 
+## [Unreleased]
+
+### Fixed
+- A failed tool call now shows its error message. Providers that report the error as an object (for example Claude) previously rendered as `[object Object]` or as "Command completed without output."
+
 ## [0.2.0] - 2026-10-30
 
 ### Added
