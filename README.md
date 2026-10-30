@@ -135,6 +135,19 @@ reach the file; PNG, JPEG, GIF, WebP, AVIF, BMP, ICO and SVG are recognised, and
 
 ![Image read](docs/images/tool-image.png)
 
+#### Images in replies
+
+When an agent writes `![description](file:///path/to/image.png)` on a line of its own, the reply
+shows the picture: a small thumbnail with no frame, several in a row when they follow one another,
+and the description, size and weight over it while the pointer rests on it. A click opens it in a
+viewer that never draws it larger than its own size; the wheel zooms around the pointer, a drag
+moves it, and the buttons give zoom, 1:1 and fit.
+
+Local files and `data:` images load at once. A remote `http(s)` image waits as a tile that names
+the server and has a **Load** button, because the agent writes the address and a prompt injection
+can use it to send chat data off your machine. The setting **Load remote images automatically
+(at your own risk)** removes the wait; it is off by default.
+
 ### Edit
 
 Diff rendering where adjacent removed and added rows join into one rounded block, and only the

@@ -49,6 +49,8 @@ export type MdBlock =
   | { kind: "code"; code: string; language: string }
   | { kind: "rule" }
   | { kind: "table"; header: MdCell[]; rows: MdCell[][]; align: MdAlign[] }
+  /** A paragraph holding only `![alt](src)`. An image mid-sentence stays a link. */
+  | { kind: "image"; src: string; alt: string }
   /** The degraded case: source that opened a construct it never closed. */
   | { kind: "plain"; text: string };
 
@@ -68,6 +70,8 @@ const TRAILING_SPACE_RE = /[ \t]+$/;
 const ESCAPABLE_RE = /[!-\/:-@\[-`{-~]/;
 // Sticky, so a candidate is tested in place instead of slicing the line.
 const URL_RE = /(?:https?:\/\/|www\.)[^\s<>()[\]]+/y;
+const IMAGE_RE = /!\[([^\]]*)\]\(([^)]*)\)/g;
+const IMAGE_PARAGRAPH_RE = /^(?:\s*!\[[^\]]*\]\([^)]*\))+\s*$/;
 
 /** Emphasis inside emphasis is rare and cheap to bound; deeper text stays flat. */
 const MAX_INLINE_DEPTH = 4;
@@ -464,7 +468,14 @@ function readParagraph(lines: string[], start: number, out: MdBlock[]): number {
   }
 
   if (collected.length === 0) return start + 1;
-  out.push({ kind: "paragraph", spans: parseInline(joinSoft(collected)) });
+  const joined = joinSoft(collected);
+  if (IMAGE_PARAGRAPH_RE.test(joined)) {
+    for (const match of joined.matchAll(IMAGE_RE)) {
+      out.push({ kind: "image", alt: match[1] ?? "", src: cleanHref(match[2] ?? "") });
+    }
+    return index;
+  }
+  out.push({ kind: "paragraph", spans: parseInline(joined) });
   return index;
 }
 

@@ -6,6 +6,8 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 ## [Unreleased]
 
 ### Added
+- Images in assistant replies: a paragraph holding only `![alt](src)` is drawn as the picture instead of an "Image" link: a small thumbnail with no frame, several in a row, with the description, size and weight shown over it on hover. Local files (`file://`) load through the daemon and `data:` images as they are. A remote `http(s)` image is a tile of the same size that names the server and waits for a "Load" click; the setting "Load remote images automatically (at your own risk)" lifts that, and is off by default because the agent writes the address. Pixel size and, where the server allows it, weight are read after a remote image loads.
+- Pictures and image cards open in a viewer on click: never larger than the image's own size, the wheel zooms around the pointer, a drag moves it, and buttons give zoom, 1:1 and fit. Esc, the close button or a click on the backdrop closes it.
 - Folding also covers stderr, eval output and code, MCP input and response, GitHub replies, files and requests, and subagent prompts, under the same two settings. Hub cards are left whole.
 - Long tool output folds after a finished call: command output keeps its start and end (default 20 lines) and file reads, writes and diffs keep their first lines (default 30), each behind a "Show N more lines" control. Both limits are settings; 0 turns folding off. Copy still copies everything, and the find bar opens the folded blocks that contain the search and folds them again on close.
 - Edit cards show a diff for providers that report an edit as the replaced and replacement text only (Claude, Codex, opencode), instead of a bare "[Edit: diff applied]".
@@ -19,6 +21,7 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 - The time under a prompt or a reply always includes seconds, and carries the weekday (within a week) or the date (older) when the message is not from today. Prompts previously showed only the clock.
 
 ### Fixed
+- Image and reveal paths keep spaces in file names: a path such as `my shot.png` was cut at the first space, and a `file://` URL with `%20` or a bare `%` no longer fails.
 - A prompt that is only a pasted image is left to Paseo's own bubble instead of being redrawn as an empty one. A prompt with text and an image still loses the image in the enhanced bubble, because Paseo does not pass images to plugins; the "Enhanced prompt bubble" setting hands prompts back to the host.
 - Shell tool cards show the full command: the header is one line ending in an ellipsis instead of cutting the command at 55 characters, and the expanded card shows the whole command above its output.
 - PowerShell, pwsh, cmd and other command-line tools are drawn as shell cards with a `$ command` title. Previously they got the tool name as title and a `bash` label.
