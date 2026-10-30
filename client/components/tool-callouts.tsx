@@ -245,7 +245,7 @@ export function ToolCallout({
           ...tokens.boxShadow,
         },
         terminalPrompt: {
-          fontSize: tokens.fs(12),
+          fontSize: tokens.fs(12, "code"),
           fontFamily: tokens.fontMono,
           color: tokens.foreground,
         },
@@ -266,14 +266,14 @@ export function ToolCallout({
         },
         evalOutputText: {
           fontFamily: tokens.fontMono,
-          fontSize: tokens.fs(11.5),
-          lineHeight: tokens.fs(17),
+          fontSize: tokens.fs(11.5, "code"),
+          lineHeight: tokens.fs(17, "code"),
           color: tokens.foregroundMuted,
         },
         terminalOutput: {
           fontFamily: tokens.fontMono,
-          fontSize: tokens.fs(11.5),
-          lineHeight: tokens.fs(17),
+          fontSize: tokens.fs(11.5, "code"),
+          lineHeight: tokens.fs(17, "code"),
           color: tokens.foregroundMuted,
         },
         silentCommandText: {
