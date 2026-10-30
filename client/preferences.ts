@@ -22,6 +22,14 @@ export function sanitizeTypographyScale(value: unknown, fallback = 1): number {
   return Math.max(TYPOGRAPHY_SCALE_MIN, Math.min(TYPOGRAPHY_SCALE_MAX, value));
 }
 
+/** Zero turns folding off; the top bound only keeps a typo from being absurd. */
+export const LINE_LIMIT_MAX = 10_000;
+
+export function sanitizeLineLimit(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(LINE_LIMIT_MAX, Math.round(value)));
+}
+
 export interface EnhancerPreferences {
   accent: AccentPreset;
   uiFont: UiFontPreference;
@@ -30,6 +38,13 @@ export interface EnhancerPreferences {
   replyScale: number;
   toolScale: number;
   codeScale: number;
+  /**
+   * Lines of command output shown before the middle folds away, leaving the
+   * start and the end. Zero shows all of it.
+   */
+  shellMaxLines: number;
+  /** Lines of code, file reads and diffs shown before the rest folds. Zero shows all. */
+  codeMaxLines: number;
   frostedGlass: boolean;
   /**
    * A light that follows the pointer across a card. Web and desktop only:
@@ -76,6 +91,8 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   replyScale: 1,
   toolScale: 1,
   codeScale: 1,
+  shellMaxLines: 20,
+  codeMaxLines: 30,
   frostedGlass: true,
   pointerGlow: true,
   enhancedUserBubble: true,
@@ -110,6 +127,8 @@ function loadPreferences(): EnhancerPreferences {
       replyScale: sanitizeTypographyScale(candidate.replyScale),
       toolScale: sanitizeTypographyScale(candidate.toolScale),
       codeScale: sanitizeTypographyScale(candidate.codeScale),
+      shellMaxLines: sanitizeLineLimit(candidate.shellMaxLines, DEFAULT_PREFERENCES.shellMaxLines),
+      codeMaxLines: sanitizeLineLimit(candidate.codeMaxLines, DEFAULT_PREFERENCES.codeMaxLines),
       frostedGlass:
         typeof candidate.frostedGlass === "boolean"
           ? candidate.frostedGlass

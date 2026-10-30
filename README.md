@@ -91,6 +91,21 @@ settings control that text.
 Both toggles are **off by default** to preserve the original Beautiful Chat
 behavior. You can enable either in the plugin settings.
 
+### Long output
+
+Long results fold behind a **Show N more lines** control once the call has
+finished; a running call is never folded.
+
+| Setting | Default | What it folds |
+| --- | --- | --- |
+| **Long terminal output** | 20 lines | Command output keeps its start and its end and folds the middle, because the error and the summary are at the end. |
+| **Long code and diffs** | 30 lines | File reads, writes and diffs show their first lines and fold the rest. |
+
+Enter any whole number; `0` never folds. A block that would hide fewer than five
+lines stays whole. **Copy** always copies everything, and the find bar (Ctrl+F)
+opens the folded blocks that contain what you search for, then folds them again
+when it closes. Text selection covers only the lines on screen.
+
 ---
 
 ## Tool calls

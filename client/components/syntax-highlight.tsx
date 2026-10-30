@@ -11,6 +11,8 @@ import { selectableSurface, unselectable } from "./selection";
 import { selectionCodeSurface, selectionSurface } from "./selection-actions";
 import { useHighlightedLines } from "../highlight";
 import { diffLineNumbers, intralineRanges } from "./diff-text";
+import { planFold, useFold } from "../fold";
+import { FoldBar } from "./fold-bar";
 import type { IntralineRange } from "./diff-text";
 import type { HighlightLine, HighlightToken } from "../../shared/highlight-rpc";
 
@@ -26,6 +28,8 @@ interface SyntaxHighlightProps {
    * draws no numbers: sequential ones would claim a place it does not know.
    */
   relativeDiff?: boolean;
+  /** Lines shown before the rest folds behind a control; 0 shows them all. */
+  maxLines?: number;
   filename?: string;
   compact?: boolean;
   /** Shows the file in the machine's own file manager. Omitted: plain label. */
@@ -479,6 +483,7 @@ export function SyntaxHighlightBlock({
   showLineNumbers = false,
   startLine = 1,
   relativeDiff = false,
+  maxLines = 0,
   filename,
   compact = false,
   onRevealFile,
@@ -494,6 +499,10 @@ export function SyntaxHighlightBlock({
   }, [code]);
 
   const lines = useMemo(() => code.trimEnd().split("\n"), [code]);
+  // A long block shows its first lines and offers the rest. The copy button
+  // above reads `code`, so it still copies everything.
+  const plan = useMemo(() => planFold(lines.length, maxLines, "head"), [lines.length, maxLines]);
+  const { folded, open, setOpen: setFoldOpen } = useFold(code, plan);
   // A diff is a diff whatever the label says, and everything below reads this
   // flag rather than the label.
   const isDiff = useMemo(
@@ -690,7 +699,7 @@ export function SyntaxHighlightBlock({
       )}
 
       <View {...selectionCodeSurface} style={styles.codeArea}>
-        {lines.map((line, idx) => {
+        {lines.slice(0, folded && plan ? plan.head : lines.length).map((line, idx) => {
           const shikiLine = shikiLines?.[idx];
           // The patched file's tokens, and only for a line the file owns. A
           // chrome line keeps the diff rendering it has today.
@@ -770,6 +779,14 @@ export function SyntaxHighlightBlock({
             </View>
           );
         })}
+        {plan && (folded || open) ? (
+          <FoldBar
+            hidden={plan.hidden}
+            open={open}
+            tokens={tokens}
+            onPress={() => setFoldOpen(!open)}
+          />
+        ) : null}
       </View>
     </View>
   );
