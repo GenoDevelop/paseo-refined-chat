@@ -621,6 +621,7 @@ export function LiveToolCallRenderer({
         data={calloutData}
         tokens={tokens}
         defaultExpanded={isExpanded}
+        autoCollapse={preferences.autoCollapseTools}
         onRevealPath={handleRevealPath}
         imageFile={imageFile}
       />
@@ -698,7 +699,7 @@ export function LiveReasoningRenderer({
       <ReasoningTrace
         data={reasoningData}
         tokens={tokens}
-        defaultExpanded={data.phase === "streaming"}
+        defaultExpanded={preferences.collapseThinking ? false : data.phase === "streaming"}
       />
     </View>
   );

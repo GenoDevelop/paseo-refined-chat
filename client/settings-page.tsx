@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useRef } from "react";
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
 import { hostFontEscape } from "./components/host-font-escape";
 import { radius, buildThemeTokens, type ExtendedThemeTokens } from "./components/theme-tokens";
 import {
   ACCENT_PRESETS,
+  TYPOGRAPHY_SCALE_MIN,
+  TYPOGRAPHY_SCALE_MAX,
   resetEnhancerPreferences,
   updateEnhancerPreferences,
   useEnhancerPreferences,
@@ -207,6 +209,97 @@ function ChoiceRow<T extends string>({
   );
 }
 
+/** User-editable percent instead of fixed Small/Large presets. */
+function PercentageRow({
+  title,
+  description,
+  value,
+  onChange,
+  tokens,
+}: {
+  title: string;
+  description: string;
+  value: number;
+  onChange(value: number): void;
+  tokens: ExtendedThemeTokens;
+}) {
+  const format = (scale: number) => String(Math.round(scale * 10000) / 100);
+  const [draft, setDraft] = useState(() => format(value));
+  const [invalid, setInvalid] = useState(false);
+
+  // A reset or a change from elsewhere should update the editor immediately.
+  useEffect(() => {
+    setDraft(format(value));
+    setInvalid(false);
+  }, [value]);
+
+  function commit() {
+    const input = draft.trim().replace(/%$/, "").trim().replace(",", ".");
+    const percent = input ? Number(input) : NaN;
+    if (
+      !Number.isFinite(percent) ||
+      percent < TYPOGRAPHY_SCALE_MIN * 100 ||
+      percent > TYPOGRAPHY_SCALE_MAX * 100
+    ) {
+      setInvalid(true);
+      return;
+    }
+    const next = Math.round(percent * 100) / 10000;
+    setInvalid(false);
+    setDraft(format(next));
+    if (next !== value) onChange(next);
+  }
+
+  return (
+    <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
+      <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+        {title}
+      </Text>
+      <Text
+        style={[
+          styles.rowDescription,
+          { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
+        ]}
+      >
+        {description}
+      </Text>
+      <View style={styles.percentInputRow}>
+        <TextInput
+          value={draft}
+          onChangeText={(next) => {
+            setDraft(next);
+            setInvalid(false);
+          }}
+          onBlur={commit}
+          onSubmitEditing={commit}
+          accessibilityLabel={title}
+          accessibilityHint="Enter a percentage and press Enter to apply"
+          keyboardType="decimal-pad"
+          returnKeyType="done"
+          maxLength={9}
+          style={[
+            styles.percentInput,
+            {
+              color: tokens.foreground,
+              backgroundColor: tokens.surface2,
+              borderColor: invalid ? tokens.danger : tokens.border,
+              fontFamily: tokens.fontUi,
+            },
+          ]}
+        />
+        <Text style={[styles.percentUnit, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+          %
+        </Text>
+      </View>
+      {invalid ? (
+        <Text style={[styles.rowDescription, { color: tokens.danger }]}>
+          Enter a value from {TYPOGRAPHY_SCALE_MIN * 100}% to {TYPOGRAPHY_SCALE_MAX * 100}%.
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 /** Settings content mounted by Paseo under the selected host's Plugin settings. */
 export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
   const preferences = useEnhancerPreferences();
@@ -313,6 +406,46 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           tokens={tokens}
         />
 
+        <PercentageRow
+          title="Assistant replies"
+          description="Body text, headings, lists and spacing in markdown. Enter any percent, e.g. 127.5."
+          value={preferences.replyScale}
+          onChange={(replyScale) => updateEnhancerPreferences({ replyScale })}
+          tokens={tokens}
+        />
+
+        <PercentageRow
+          title="Tool cards"
+          description="Tool headers, metadata, reasoning, status messages and checklists."
+          value={preferences.toolScale}
+          onChange={(toolScale) => updateEnhancerPreferences({ toolScale })}
+          tokens={tokens}
+        />
+
+        <PercentageRow
+          title="Code and terminal"
+          description="Fenced code, diffs, line numbers, terminal and other code output. Inline code follows replies."
+          value={preferences.codeScale}
+          onChange={(codeScale) => updateEnhancerPreferences({ codeScale })}
+          tokens={tokens}
+        />
+
+        <ToggleRow
+          title="Auto-collapse tools"
+          description="Folds a tool card back up once it finishes. A failed call stays open, and a card you opened or closed yourself keeps its state."
+          value={preferences.autoCollapseTools}
+          onChange={(autoCollapseTools) => updateEnhancerPreferences({ autoCollapseTools })}
+          tokens={tokens}
+        />
+
+        <ToggleRow
+          title="Collapse thinking"
+          description="Starts a thinking stream folded; open one to read the reasoning while it streams."
+          value={preferences.collapseThinking}
+          onChange={(collapseThinking) => updateEnhancerPreferences({ collapseThinking })}
+          tokens={tokens}
+        />
+
         <ToggleRow
           title="Frosted glass"
           description="Blur surfaces where the host supports it, or use solid surfaces instead."
@@ -408,6 +541,17 @@ const styles = StyleSheet.create({
   row: { padding: 14, gap: 8, borderTopWidth: 1 },
   rowTitle: { fontSize: 14, fontWeight: "600" },
   rowDescription: { fontSize: 12, lineHeight: 17 },
+  percentInputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  percentInput: {
+    minWidth: 94,
+    height: 38,
+    borderWidth: 1,
+    borderRadius: radius.block,
+    paddingHorizontal: 10,
+    fontSize: 15,
+    textAlign: "right",
+  },
+  percentUnit: { fontSize: 14, fontWeight: "600" },
   options: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   option: { borderWidth: 1, borderRadius: radius.block, paddingHorizontal: 10, paddingVertical: 7 },
   optionLabel: { fontSize: 12, fontWeight: "600" },

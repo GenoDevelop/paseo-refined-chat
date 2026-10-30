@@ -13,10 +13,23 @@ export type UiFontPreference = "inter" | "system";
 export type CodeFontPreference = "code" | "plain";
 export type MarkdownVariantPreference = "document" | "compact" | "terminal";
 
+/** Arbitrary percentage input, with safety bounds to avoid unreadable layouts. */
+export const TYPOGRAPHY_SCALE_MIN = 0.5; // 50%
+export const TYPOGRAPHY_SCALE_MAX = 3; // 300%
+
+export function sanitizeTypographyScale(value: unknown, fallback = 1): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(TYPOGRAPHY_SCALE_MIN, Math.min(TYPOGRAPHY_SCALE_MAX, value));
+}
+
 export interface EnhancerPreferences {
   accent: AccentPreset;
   uiFont: UiFontPreference;
   codeFont: CodeFontPreference;
+  /** Independent scale factors (1 = 100%) for replies, tool UI and code. */
+  replyScale: number;
+  toolScale: number;
+  codeScale: number;
   frostedGlass: boolean;
   /**
    * A light that follows the pointer across a card. Web and desktop only:
@@ -30,6 +43,13 @@ export interface EnhancerPreferences {
    * hands prompts back to the host, whose own bubble still shows them.
    */
   enhancedUserBubble: boolean;
+  /**
+   * Folds a finished tool card back up on its own. A card the user opened or
+   * closed keeps its state, and a failed call always stays open.
+   */
+  autoCollapseTools: boolean;
+  /** Starts a thinking stream folded instead of following it live. */
+  collapseThinking: boolean;
   /**
    * The Copy / Add to chat bar that follows a highlight. Web and desktop only:
    * iOS and Android route selection through the platform's own menu, which the
@@ -53,9 +73,15 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   accent: "host",
   uiFont: "inter",
   codeFont: "code",
+  replyScale: 1,
+  toolScale: 1,
+  codeScale: 1,
   frostedGlass: true,
   pointerGlow: true,
   enhancedUserBubble: true,
+  // Preserve Beautiful Chat's original behavior until explicitly enabled.
+  autoCollapseTools: false,
+  collapseThinking: false,
   selectionActions: true,
   assistantMarkdown: true,
   markdownVariant: "document",
@@ -81,6 +107,9 @@ function loadPreferences(): EnhancerPreferences {
       accent: isAccentPreset(candidate.accent) ? candidate.accent : DEFAULT_PREFERENCES.accent,
       uiFont: candidate.uiFont === "system" ? "system" : DEFAULT_PREFERENCES.uiFont,
       codeFont: candidate.codeFont === "plain" ? "plain" : DEFAULT_PREFERENCES.codeFont,
+      replyScale: sanitizeTypographyScale(candidate.replyScale),
+      toolScale: sanitizeTypographyScale(candidate.toolScale),
+      codeScale: sanitizeTypographyScale(candidate.codeScale),
       frostedGlass:
         typeof candidate.frostedGlass === "boolean"
           ? candidate.frostedGlass
@@ -93,6 +122,14 @@ function loadPreferences(): EnhancerPreferences {
         typeof candidate.enhancedUserBubble === "boolean"
           ? candidate.enhancedUserBubble
           : DEFAULT_PREFERENCES.enhancedUserBubble,
+      autoCollapseTools:
+        typeof candidate.autoCollapseTools === "boolean"
+          ? candidate.autoCollapseTools
+          : DEFAULT_PREFERENCES.autoCollapseTools,
+      collapseThinking:
+        typeof candidate.collapseThinking === "boolean"
+          ? candidate.collapseThinking
+          : DEFAULT_PREFERENCES.collapseThinking,
       selectionActions:
         typeof candidate.selectionActions === "boolean"
           ? candidate.selectionActions

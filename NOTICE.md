@@ -16,5 +16,16 @@ The fork baseline used for this initial rebranding is commit
 Refined Chat is not affiliated with or endorsed by the original author
 or the Paseo project. Git history retains original authorship.
 
-The changes proposed in [upstream PR #9](https://github.com/ABorakati/beautiful-chat/pull/9)
-by Moyf are **not** part of this initial fork.
+## Adapted community contributions
+
+Refined Chat adapts typography and tool-card behavior from
+[Beautiful Chat PR #9](https://github.com/ABorakati/beautiful-chat/pull/9),
+authored by **Moyf** (`Moyf/beautiful-chat`, branch
+`text-size-auto-collapse`). That contribution was published under
+the project's MIT license and remains credited to Moyf.
+
+Refined Chat changes the original proposal's single fixed-preset scale
+into independent, user-entered percentage controls for assistant
+replies, tool cards and code. It also makes automated folding opt-in.
+
+The original MIT license and attribution remain in [LICENSE](LICENSE).
