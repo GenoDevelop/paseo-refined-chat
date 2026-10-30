@@ -1,7 +1,19 @@
 {
   "id": "refined-chat",
+  "name": "Refined Chat",
+  "description": "Customizable chat typography and tool-card presentation for Paseo coding agents.",
+  "media": [
+    "images/hero.png"
+  ],
   "requirements": {
-    "paseo": ">=0.8.0"
+    "paseo": ">=0.11.0"
   },
-  "build": [["npm", "ci", "--include=dev"]]
+  "build": [
+    [
+      "npm",
+      "ci",
+      "--omit=dev",
+      "--ignore-scripts"
+    ]
+  ]
 }
