@@ -14,7 +14,7 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 - Optional collapsed reasoning and collapse controls at the bottom of long cards.
 - Independent plugin ID, preference namespace and DOM/CSS identifiers.
 - Project provenance and licenses for original code and embedded Inter/Iosevka fonts.
-- Public catalog metadata, screenshot and a dedicated listing overview.
+- Public catalog metadata, an inherited default chat screenshot and a dedicated listing overview. A new screenshot showing the added settings is still recommended before catalog submission.
 
 ### Changed
 - Git installations prepare production dependencies from the existing lockfile without running npm lifecycle scripts.
@@ -27,6 +27,6 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 - MIT license for code; SIL OFL 1.1 for embedded fonts.
 
 ### Verification
-- The redesigned presentation was exercised manually in Paseo Desktop.
+- The redesigned presentation was manually exercised in Paseo Desktop by the project maintainer. Clean release installation and packaging still require separate local verification.
 - The initial repository has no GitHub Actions or hosted CI workflow.
 - Maintainers and contributors should run `npm ci` and `npm run typecheck` locally before publishing changes.
