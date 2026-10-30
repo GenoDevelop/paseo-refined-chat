@@ -24,9 +24,16 @@ interface PaseoToolCalloutProps {
   data: PaseoToolData;
   tokens: ExtendedThemeTokens;
   defaultExpanded?: boolean;
+  /** Lines of a long prompt shown before the rest folds; 0 shows all. */
+  codeMaxLines?: number;
 }
 
-export function PaseoToolCallout({ data, tokens, defaultExpanded = true }: PaseoToolCalloutProps) {
+export function PaseoToolCallout({
+  data,
+  tokens,
+  defaultExpanded = true,
+  codeMaxLines = 0,
+}: PaseoToolCalloutProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   const styles = useMemo(
@@ -131,7 +138,7 @@ export function PaseoToolCallout({ data, tokens, defaultExpanded = true }: Paseo
       {expanded && (
         <View style={styles.body}>
           {data.tool === "create_agent" && data.createAgent && (
-            <CreateAgentView data={data.createAgent} tokens={tokens} />
+            <CreateAgentView data={data.createAgent} tokens={tokens} codeMaxLines={codeMaxLines} />
           )}
           {data.tool === "list_providers" && data.providers && (
             <ListProvidersView data={data.providers} tokens={tokens} />
@@ -151,9 +158,11 @@ export function PaseoToolCallout({ data, tokens, defaultExpanded = true }: Paseo
 function CreateAgentView({
   data,
   tokens,
+  codeMaxLines,
 }: {
   data: PaseoCreateAgentData;
   tokens: ExtendedThemeTokens;
+  codeMaxLines: number;
 }) {
   return (
     <View style={{ gap: 8 }}>
@@ -245,6 +254,7 @@ function CreateAgentView({
           code={data.initialPrompt}
           language="markdown"
           tokens={tokens}
+          maxLines={codeMaxLines}
           compact
         />
       </View>

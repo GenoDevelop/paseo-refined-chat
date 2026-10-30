@@ -13,14 +13,17 @@ interface FoldedOutputProps {
   limit: number;
   tokens: ExtendedThemeTokens;
   textStyle: TextStyle | TextStyle[];
+  /** How a run of lines is drawn; the default colours it like terminal output. */
+  render?: (text: string) => React.ReactNode;
 }
 
 /**
- * Command output that folds to its start and its end. The middle of a long
- * output is rarely what the reader came for, and the end is where the error and
- * the summary are, so both ends stay and the middle sits behind one control.
+ * Text output that folds to its start and its end. The middle of a long output
+ * is rarely what the reader came for, and the end is where the error and the
+ * summary are, so both ends stay and the middle sits behind one control.
  */
-export function FoldedOutput({ text, limit, tokens, textStyle }: FoldedOutputProps) {
+export function FoldedOutput({ text, limit, tokens, textStyle, render }: FoldedOutputProps) {
+  const draw = render ?? ((run: string) => renderTerminalOutput(run, tokens));
   const trimmed = text.replace(/\s+$/, "");
   const lines = useMemo(() => trimmed.split("\n"), [trimmed]);
   const plan = useMemo(() => planFold(lines.length, limit, "headTail"), [lines.length, limit]);
@@ -30,7 +33,7 @@ export function FoldedOutput({ text, limit, tokens, textStyle }: FoldedOutputPro
     return (
       <View>
         <Text selectable {...selectionCodeText} style={textStyle}>
-          {renderTerminalOutput(text, tokens)}
+          {draw(text)}
         </Text>
         {open ? (
           <FoldBar hidden={plan?.hidden ?? 0} open tokens={tokens} onPress={() => setOpen(false)} />
@@ -42,12 +45,12 @@ export function FoldedOutput({ text, limit, tokens, textStyle }: FoldedOutputPro
   return (
     <View>
       <Text selectable {...selectionCodeText} style={textStyle}>
-        {renderTerminalOutput(lines.slice(0, plan.head).join("\n"), tokens)}
+        {draw(lines.slice(0, plan.head).join("\n"))}
       </Text>
       <FoldBar hidden={plan.hidden} open={false} tokens={tokens} onPress={() => setOpen(true)} />
       {plan.tail > 0 ? (
         <Text selectable {...selectionCodeText} style={textStyle}>
-          {renderTerminalOutput(lines.slice(lines.length - plan.tail).join("\n"), tokens)}
+          {draw(lines.slice(lines.length - plan.tail).join("\n"))}
         </Text>
       ) : null}
     </View>

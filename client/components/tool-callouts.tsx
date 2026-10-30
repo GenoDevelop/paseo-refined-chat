@@ -669,9 +669,13 @@ export function ToolCallout({
                 />
               )}
               {data.shell?.stderr && (
-                <Text selectable style={[styles.terminalOutput, { color: tokens.danger }]}>
-                  {data.shell.stderr}
-                </Text>
+                <FoldedOutput
+                  text={data.shell.stderr}
+                  limit={shellLimit}
+                  tokens={tokens}
+                  textStyle={[styles.terminalOutput, { color: tokens.danger }]}
+                  render={(run) => run}
+                />
               )}
               {data.output && !data.shell?.stdout && (
                 <FoldedOutput
@@ -694,7 +698,13 @@ export function ToolCallout({
           )}
 
           {data.tool === "github" && (
-            <GitHubBody data={data.github} tokens={tokens} running={isRunning} />
+            <GitHubBody
+              data={data.github}
+              tokens={tokens}
+              running={isRunning}
+              shellMaxLines={shellLimit}
+              codeMaxLines={codeLimit}
+            />
           )}
 
           {data.tool === "thinking" && (
@@ -799,6 +809,7 @@ export function ToolCallout({
                   code={JSON.stringify(data.mcp.arguments, null, 2)}
                   language="json"
                   tokens={tokens}
+                  maxLines={codeLimit}
                   compact
                 />
               </View>
@@ -816,6 +827,7 @@ export function ToolCallout({
                     }
                     language={typeof data.mcp.result === "string" ? "typescript" : "json"}
                     tokens={tokens}
+                    maxLines={codeLimit}
                     compact
                   />
                 </View>
@@ -891,6 +903,7 @@ export function ToolCallout({
                       language={cell.language}
                       filename={cell.title || "Persistent Kernel Cell"}
                       tokens={tokens}
+                      maxLines={codeLimit}
                       showLineNumbers
                       compact
                     />
@@ -976,7 +989,7 @@ export function ToolCallout({
           )}
           {data.tool === "hub" && data.hub && <HubCallout data={data.hub} tokens={tokens} />}
           {data.tool === "paseo" && data.paseo && (
-            <PaseoToolCallout data={data.paseo} tokens={tokens} />
+            <PaseoToolCallout data={data.paseo} tokens={tokens} codeMaxLines={codeLimit} />
           )}
 
           {!hasTypedBody && (

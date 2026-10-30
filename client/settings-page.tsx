@@ -517,7 +517,7 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
 
         <LineLimitRow
           title="Long terminal output"
-          description="Command output past this many lines keeps its start and its end and folds the middle. 0 never folds."
+          description="Text results (command output, errors, eval output, GitHub replies) past this many lines keep their start and their end and fold the middle. 0 never folds."
           value={preferences.shellMaxLines}
           onChange={(shellMaxLines) => updateEnhancerPreferences({ shellMaxLines })}
           tokens={tokens}
@@ -525,7 +525,7 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
 
         <LineLimitRow
           title="Long code and diffs"
-          description="File reads, writes and diffs past this many lines show the first lines and fold the rest. 0 never folds."
+          description="File reads, writes, diffs and structured data (MCP, GitHub, eval code) past this many lines show the first lines and fold the rest. 0 never folds."
           value={preferences.codeMaxLines}
           onChange={(codeMaxLines) => updateEnhancerPreferences({ codeMaxLines })}
           tokens={tokens}
