@@ -9,6 +9,7 @@ import { Rotate } from "./motion";
 import { Breathe } from "./breathe";
 import { PulseDot } from "./pulse-dot";
 import { radius } from "./theme-tokens";
+import { countDiffLines, offsetHunkHeaders } from "./diff-text";
 import type { ExtendedThemeTokens } from "./theme-tokens";
 import { HubCallout } from "./hub-callout";
 import { PaseoToolCallout } from "./paseo-tool-callouts";
@@ -21,6 +22,11 @@ import type { ImageFile } from "../image-file";
 import { selectableSurface, unselectable } from "./selection";
 import { selectionCodeText, selectionSurface } from "./selection-actions";
 import type { ToolCalloutData } from "../../shared/contracts";
+
+/** Lines in a block of text, ignoring the newline that ends the last one. */
+function countLines(text: string): number {
+  return text.replace(/\r?\n$/, "").split(/\r?\n/).length;
+}
 
 function getToolIconName(tool: string): string {
   if (tool === "git") return "Git";
@@ -55,6 +61,11 @@ interface ToolCalloutProps {
    * the read is in flight.
    */
   imageFile?: ImageFile | null;
+  /**
+   * The file line a computed edit diff starts on. Undefined or null leaves the
+   * diff without line numbers, since its own positions are relative.
+   */
+  editLine?: number | null;
 }
 
 export function ToolCallout({
@@ -64,6 +75,7 @@ export function ToolCallout({
   autoCollapse = false,
   onRevealPath,
   imageFile,
+  editLine,
 }: ToolCalloutProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [touched, setTouched] = useState(false);
@@ -119,6 +131,26 @@ export function ToolCallout({
   // unmapped tool that prints nothing is not a silent command, so neither
   // inherits the shell sentence.
   const isShellCall = data.tool === "bash" || data.tool === "shell";
+
+  // An edit's header carries how much it changed, so a collapsed card still
+  // says whether it touched one line or fifty.
+  // A write is all additions, so its header says how long the new file is.
+  const diffStat = useMemo(() => {
+    if (data.tool === "edit" && data.diff) return countDiffLines(data.diff);
+    if (data.tool === "write" && data.code && !isImagePath(data.filePath)) {
+      return { added: countLines(data.code), removed: 0 };
+    }
+    return undefined;
+  }, [data.tool, data.diff, data.code, data.filePath]);
+
+  // A read's header says how many lines came back. An image read has no lines
+  // to count, and a read still streaming would show a number that keeps moving.
+  const readLines = useMemo(() => {
+    if (data.tool !== "read" || !data.code || isRunning || isImagePath(data.filePath)) {
+      return undefined;
+    }
+    return countLines(data.code);
+  }, [data.tool, data.code, data.filePath, isRunning]);
 
   const statusColor = isSuccess ? tokens.success : isRunning ? tokens.accent : tokens.danger;
 
@@ -186,6 +218,23 @@ export function ToolCallout({
           flexDirection: "row",
           alignItems: "center",
           gap: 6,
+        },
+        diffStat: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          flexShrink: 0,
+        },
+        lineStat: {
+          fontFamily: tokens.fontUi,
+          fontSize: tokens.fs(11),
+          color: tokens.foregroundSubtle,
+          flexShrink: 0,
+        },
+        diffStatText: {
+          fontFamily: tokens.fontMono,
+          fontSize: tokens.fs(11),
+          fontWeight: "600",
         },
         durationBadge: {
           fontSize: tokens.fs(11),
@@ -518,6 +567,29 @@ export function ToolCallout({
           <Text selectable style={styles.titleText} numberOfLines={1} ellipsizeMode="tail">
             {data.title}
           </Text>
+          {diffStat && (diffStat.added > 0 || diffStat.removed > 0) ? (
+            <View style={styles.diffStat}>
+              {diffStat.added > 0 ? (
+                <Text selectable style={[styles.diffStatText, { color: tokens.success }]}>
+                  +{diffStat.added}
+                </Text>
+              ) : null}
+              {diffStat.removed > 0 ? (
+                <Text selectable style={[styles.diffStatText, { color: tokens.danger }]}>
+                  -{diffStat.removed}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+          {readLines !== undefined ? (
+            <Text selectable style={styles.lineStat}>
+              {data.startLine !== undefined
+                ? readLines === 1
+                  ? `line ${data.startLine}`
+                  : `lines ${data.startLine}–${data.startLine + readLines - 1}`
+                : `${readLines} ${readLines === 1 ? "line" : "lines"}`}
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.headerRight}>
@@ -757,6 +829,7 @@ export function ToolCallout({
                 filename={data.filePath ? `${data.filePath} ${data.lineRange || ""}` : undefined}
                 tokens={tokens}
                 showLineNumbers={Boolean(data.code)}
+                startLine={data.startLine}
                 onRevealFile={revealFile}
                 compact
               />
@@ -764,10 +837,17 @@ export function ToolCallout({
 
           {data.tool === "edit" && (
             <SyntaxHighlightBlock
-              code={data.diff || data.code || "// [Edit: diff applied]"}
+              code={
+                data.diff
+                  ? data.diffComputed && editLine
+                    ? offsetHunkHeaders(data.diff, editLine - 1)
+                    : data.diff
+                  : data.code || "// [Edit: diff applied]"
+              }
               language="diff"
               filename={data.filePath}
               tokens={tokens}
+              relativeDiff={data.diffComputed && !editLine}
               showLineNumbers
               onRevealFile={revealFile}
               compact

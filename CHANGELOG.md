@@ -5,6 +5,14 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 
 ## [Unreleased]
 
+### Added
+- Edit cards show a diff for providers that report an edit as the replaced and replacement text only (Claude, Codex, opencode), instead of a bare "[Edit: diff applied]".
+- Edit and write cards show `+X -Y` beside the file name; read cards show how many lines came back, or which (`lines 120-179`) when the read began mid-file.
+- Diffs draw old and new line numbers in two columns. For a diff built from old and new text the daemon locates the written text in the file; if it cannot do so unambiguously, no numbers are drawn rather than wrong ones.
+- A changed word or value inside a modified line is highlighted more strongly than the rest of the row.
+- Reads that start mid-file number their lines from the real first line.
+- Read, edit and write cards are titled with the file name alone; the tool is already named by the pill beside it.
+
 ### Fixed
 - Shell tool cards show the full command: the header is one line ending in an ellipsis instead of cutting the command at 55 characters, and the expanded card shows the whole command above its output.
 - PowerShell, pwsh, cmd and other command-line tools are drawn as shell cards with a `$ command` title. Previously they got the tool name as title and a `bash` label.

@@ -10,6 +10,8 @@ import { FileTypeLogo, detectFileType } from "./file-type-logo";
 import { selectableSurface, unselectable } from "./selection";
 import { selectionCodeSurface, selectionSurface } from "./selection-actions";
 import { useHighlightedLines } from "../highlight";
+import { diffLineNumbers, intralineRanges } from "./diff-text";
+import type { IntralineRange } from "./diff-text";
 import type { HighlightLine, HighlightToken } from "../../shared/highlight-rpc";
 
 interface SyntaxHighlightProps {
@@ -17,6 +19,13 @@ interface SyntaxHighlightProps {
   language?: "typescript" | "bash" | "diff" | "json" | "python" | string;
   tokens: ExtendedThemeTokens;
   showLineNumbers?: boolean;
+  /** The file line the first row sits on, for code that began mid-file. */
+  startLine?: number;
+  /**
+   * A diff whose hunk positions are relative to a snippet rather than the file
+   * draws no numbers: sequential ones would claim a place it does not know.
+   */
+  relativeDiff?: boolean;
   filename?: string;
   compact?: boolean;
   /** Shows the file in the machine's own file manager. Omitted: plain label. */
@@ -468,6 +477,8 @@ export function SyntaxHighlightBlock({
   language = "typescript",
   tokens,
   showLineNumbers = false,
+  startLine = 1,
+  relativeDiff = false,
   filename,
   compact = false,
   onRevealFile,
@@ -489,6 +500,12 @@ export function SyntaxHighlightBlock({
     () => language === "diff" || looksLikeUnifiedDiff(lines),
     [language, lines],
   );
+  const diffNumbers = useMemo(
+    () =>
+      isDiff && !relativeDiff ? diffLineNumbers(lines) : undefined,
+    [isDiff, relativeDiff, lines],
+  );
+  const intraline = useMemo(() => (isDiff ? intralineRanges(lines) : undefined), [isDiff, lines]);
   const codeLanguage = useMemo(
     () => dialectFor(isDiff, language, filename),
     [isDiff, language, filename],
@@ -679,6 +696,19 @@ export function SyntaxHighlightBlock({
           // chrome line keeps the diff rendering it has today.
           const bodyLine = isDiff && !isDiffChrome(line) ? diffBodyLines?.[idx] : undefined;
           const kind = diffTint(lines[idx], isDiff);
+          const spans = intraline?.get(idx);
+          // The part of the row that changed gets a stronger tint of the same
+          // colour, so a one-word edit reads as one word, not as two lines.
+          const emphasis: LineEmphasis | undefined =
+            spans && kind
+              ? {
+                  ranges: spans,
+                  bg:
+                    kind === "add"
+                      ? tokens.syntax.diffAddEmphasisBg
+                      : tokens.syntax.diffRemoveEmphasisBg,
+                }
+              : undefined;
           const lineBg =
             kind === "add"
               ? tokens.syntax.diffAddBg
@@ -708,18 +738,33 @@ export function SyntaxHighlightBlock({
                 },
               ]}
             >
-              {showLineNumbers && <Text style={styles.lineNumber}>{idx + 1}</Text>}
+              {showLineNumbers && !(isDiff && relativeDiff) && diffNumbers ? (
+                // Two columns, as a unified diff has two files: a removed row
+                // sits only in the old one, an added row only in the new one.
+                <>
+                  <Text style={styles.lineNumber}>{diffNumbers[idx]?.oldLine ?? ""}</Text>
+                  <Text style={styles.lineNumber}>{diffNumbers[idx]?.newLine ?? ""}</Text>
+                </>
+              ) : showLineNumbers && !(isDiff && relativeDiff) ? (
+                <Text style={styles.lineNumber}>{startLine + idx}</Text>
+              ) : null}
               <Text selectable style={styles.lineContent}>
                 {bodyLine
-                  ? renderDiffBodyLine(line, bodyLine, tokens)
+                  ? renderDiffBodyLine(line, bodyLine, tokens, emphasis)
                   : shikiLine
-                    ? renderShikiLine(shikiLine, tokens)
+                    ? renderShikiLine(
+                        shikiLine,
+                        tokens,
+                        // These tokens cover the whole row, marker included.
+                        shiftEmphasis(emphasis, 1),
+                      )
                     : renderSyntaxLine(
                         line,
                         isDiff,
                         language,
                         lineDialects[idx] ?? codeLanguage,
                         tokens,
+                        emphasis,
                       )}
               </Text>
             </View>
@@ -755,18 +800,68 @@ function consolidateTokens(tokens: HighlightToken[]): HighlightToken[] {
   return result;
 }
 
-function renderShikiLine(line: HighlightLine, tokens: ExtendedThemeTokens): React.ReactNode {
-  return consolidateTokens(line).map((token, idx) => (
+/** The spans of a diff row's body to draw on a stronger tint. */
+interface LineEmphasis {
+  ranges: IntralineRange[];
+  bg: string;
+}
+
+/** The same spans moved right, for text that carries the marker column. */
+function shiftEmphasis(emphasis: LineEmphasis | undefined, by: number): LineEmphasis | undefined {
+  return emphasis
+    ? {
+        ...emphasis,
+        ranges: emphasis.ranges.map((range) => ({ from: range.from + by, to: range.to + by })),
+      }
+    : undefined;
+}
+
+const EMPHASIS_STYLE = { borderRadius: 3 } as const;
+
+function renderShikiLine(
+  line: HighlightLine,
+  tokens: ExtendedThemeTokens,
+  emphasis?: LineEmphasis,
+): React.ReactNode {
+  const pieces: { token: HighlightToken; text: string; marked: boolean }[] = [];
+  let offset = 0;
+  for (const token of consolidateTokens(line)) {
+    const end = offset + token.text.length;
+    // A token that straddles the span is cut at its edges so only the changed
+    // characters carry the tint, whatever the grammar made of the line.
+    const cuts = emphasis
+      ? [offset, end, ...emphasis.ranges.flatMap((range) => [range.from, range.to])].filter(
+          (at) => at >= offset && at <= end,
+        )
+      : [offset, end];
+    const bounds = [...new Set(cuts)].sort((a, b) => a - b);
+    for (let k = 0; k < bounds.length - 1; k++) {
+      const from = bounds[k]!;
+      const to = bounds[k + 1]!;
+      pieces.push({
+        token,
+        text: token.text.slice(from - offset, to - offset),
+        marked:
+          emphasis !== undefined &&
+          emphasis.ranges.some((range) => from >= range.from && to <= range.to),
+      });
+    }
+    offset = end;
+  }
+  return pieces.map(({ token, text, marked }, idx) => (
     <Text
       key={idx}
       selectable
-      style={{
-        color: token.color ?? tokens.foreground,
-        fontWeight: token.bold ? "600" : "400",
-        fontStyle: token.italic ? "italic" : "normal",
-      }}
+      style={[
+        {
+          color: token.color ?? tokens.foreground,
+          fontWeight: token.bold ? "600" : "400",
+          fontStyle: token.italic ? "italic" : "normal",
+        },
+        marked && emphasis ? { backgroundColor: emphasis.bg, ...EMPHASIS_STYLE } : null,
+      ]}
     >
-      {token.text}
+      {text}
     </Text>
   ));
 }
@@ -802,11 +897,12 @@ function renderDiffBodyLine(
   line: string,
   body: HighlightLine,
   tokens: ExtendedThemeTokens,
+  emphasis?: LineEmphasis,
 ): React.ReactNode {
   return (
     <>
       {renderDiffMarker(line.slice(0, 1), tokens)}
-      {renderShikiLine(body, tokens)}
+      {renderShikiLine(body, tokens, emphasis)}
     </>
   );
 }
@@ -817,6 +913,7 @@ function renderSyntaxLine(
   language: string,
   lineDialect: string,
   tokens: ExtendedThemeTokens,
+  emphasis?: LineEmphasis,
 ): React.ReactNode {
   if (isDiff) {
     // Hunk headers are metadata, not code.
@@ -833,6 +930,33 @@ function renderSyntaxLine(
     // the row behind it is already tinted.
     const marker = line.startsWith("+") || line.startsWith("-") ? line.slice(0, 1) : "";
     const body = marker ? line.slice(1) : line;
+
+    if (emphasis && marker) {
+      const segments: { text: string; marked: boolean }[] = [];
+      let at = 0;
+      for (const range of [...emphasis.ranges].sort((a, b) => a.from - b.from)) {
+        if (range.from > at) segments.push({ text: body.slice(at, range.from), marked: false });
+        segments.push({ text: body.slice(range.from, range.to), marked: true });
+        at = range.to;
+      }
+      if (at < body.length) segments.push({ text: body.slice(at), marked: false });
+      return (
+        <>
+          {renderDiffMarker(marker, tokens)}
+          {segments.map((segment, idx) =>
+            segment.marked ? (
+              <Text key={idx} style={{ backgroundColor: emphasis.bg, ...EMPHASIS_STYLE }}>
+                {renderDialectLine(segment.text, lineDialect, tokens)}
+              </Text>
+            ) : (
+              <React.Fragment key={idx}>
+                {renderDialectLine(segment.text, lineDialect, tokens)}
+              </React.Fragment>
+            ),
+          )}
+        </>
+      );
+    }
 
     return (
       <>

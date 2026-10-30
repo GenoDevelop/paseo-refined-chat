@@ -395,10 +395,20 @@ export interface ToolCalloutData {
   exitCode?: number;
   filePath?: string;
   lineRange?: string;
+  /** 1-based line the shown content starts at, when a read began mid-file. */
+  startLine?: number;
   command?: string;
   code?: string;
   language?: string;
   diff?: string;
+  /**
+   * True when the plugin built `diff` from an edit's old and new text. That
+   * diff knows the change but not where it sits in the file, so its hunk
+   * positions are relative to the snippet and must not be drawn as line numbers.
+   */
+  diffComputed?: boolean;
+  /** The text a computed diff wrote, which the daemon searches for to place it. */
+  editNewText?: string;
   output?: string;
   cells?: EvalCell[];
   askOptions?: Array<{

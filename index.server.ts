@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
-import { open, stat, type FileHandle } from "node:fs/promises";
+import { open, readFile, stat, type FileHandle } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
-import { revealPathRpc } from "./shared/file-rpc";
+import { locateTextRpc, revealPathRpc } from "./shared/file-rpc";
 import { type HighlightLine, type HighlightToken, highlightRpc } from "./shared/highlight-rpc";
 import { imageRpc } from "./shared/image-rpc";
 
@@ -31,6 +31,9 @@ const IMAGE_MIMES: Record<string, string> = {
  * worth the message, and the card reports the size instead of drawing it.
  */
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+
+/** A file past this is not scanned for an edit's position; no number is drawn. */
+const MAX_LOCATE_BYTES = 5 * 1024 * 1024;
 
 /** The pixel size, read out of the file's own header. Null when unreadable. */
 function readImageSize(bytes: Buffer, kind: string): { width: number; height: number } | null {
@@ -461,6 +464,36 @@ export default function contribute(server: PluginServerContext) {
         revealed: null,
         error: error instanceof Error ? error.message : String(error),
       };
+    }
+  });
+
+  server.handle(locateTextRpc, async (input) => {
+    const requested = stripSelector(input.path);
+    // Normalise line endings on both sides: the edit text and the file may
+    // disagree about CRLF, and the line count must not.
+    const needle = input.text.replace(/\r\n/g, "\n");
+    if (!requested || needle.trim() === "") return { line: null };
+
+    const target = isAbsolute(requested) ? requested : resolve(input.cwd, requested);
+    try {
+      const entry = await stat(target);
+      if (!entry.isFile() || entry.size > MAX_LOCATE_BYTES) return { line: null };
+
+      const content = (await readFile(target, "utf8")).replace(/\r\n/g, "\n");
+      const first = content.indexOf(needle);
+      if (first === -1 || content.indexOf(needle, first + 1) !== -1) return { line: null };
+
+      let line = 1;
+      for (
+        let at = content.indexOf("\n");
+        at !== -1 && at < first;
+        at = content.indexOf("\n", at + 1)
+      ) {
+        line += 1;
+      }
+      return { line };
+    } catch {
+      return { line: null };
     }
   });
 

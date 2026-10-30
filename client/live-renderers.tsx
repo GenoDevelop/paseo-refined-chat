@@ -5,6 +5,7 @@ import { useRevealedText } from "@getpaseo/plugin/client/react-native";
 import type { PluginTimelineItemProps } from "@getpaseo/plugin/client";
 import type { PluginTheme } from "@getpaseo/plugin";
 import { buildThemeTokens } from "./components/theme-tokens";
+import { buildUnifiedDiffText } from "./components/diff-text";
 import { ToolCallout } from "./components/tool-callouts";
 import { ReasoningTrace } from "./components/reasoning-trace";
 import { TaskList } from "./components/task-list";
@@ -41,6 +42,7 @@ import type {
 import { revealPathRpc } from "../shared/file-rpc";
 import { buildGitHubData } from "./github-request";
 import { useImageFile } from "./image-file";
+import { useEditAnchor } from "./edit-anchor";
 import { classifyShellTool } from "./tool-kind";
 import { extractToolText } from "./tool-text";
 
@@ -460,11 +462,31 @@ export function LiveToolCallRenderer({
       (typeof output === "string" ? output : undefined) ||
       (typeof input.content === "string" ? input.content : undefined);
 
-    // Universal diff extraction
-    const diff: string | undefined =
+    // Universal diff extraction. A provider that ships an edit as before and
+    // after text instead of a patch (opencode, Claude, Codex) gets the same
+    // treatment the host's own view gives it: the diff is computed from the
+    // pair, so the card shows the change rather than a bare summary line.
+    const editOld =
+      asString(detail.oldString) ?? asString(input.oldString) ?? asString(input.old_string);
+    const editNew =
+      asString(detail.newString) ?? asString(input.newString) ?? asString(input.new_string);
+    const computedEditDiff: string | undefined =
+      (rawName === "edit" || detailType === "edit") &&
+      (editOld !== undefined || editNew !== undefined)
+        ? buildUnifiedDiffText(editOld ?? "", editNew ?? "") || undefined
+        : undefined;
+    const providerDiff: string | undefined =
       (typeof detail.unifiedDiff === "string" ? detail.unifiedDiff : undefined) ||
       (typeof detail.diff === "string" ? detail.diff : undefined) ||
-      extractStringProp(output, "diff");
+      extractStringProp(output, "diff") ||
+      undefined;
+    const diff: string | undefined = providerDiff || computedEditDiff;
+    // A read that began mid-file reports where. The first line is 1.
+    const readOffset = typeof detail.offset === "number" ? detail.offset : undefined;
+    const startLine =
+      (rawName === "read" || detailType === "read") && readOffset !== undefined && readOffset >= 1
+        ? Math.floor(readOffset)
+        : undefined;
 
     // A tool that answers with content blocks carries its prose in
     // `content[0].text`. That text is allowed to be empty — a `hub wait` job
@@ -517,13 +539,13 @@ export function LiveToolCallRenderer({
       title = command ? `$ ${command.trim()}` : "Git command";
     } else if (rawName === "read" || detailType === "read") {
       toolKind = "read";
-      title = filePath ? `Read ${filePath.split(/[/\\]/).pop() || filePath}` : "Read file";
+      title = filePath ? filePath.split(/[/\\]/).pop() || filePath : "Read file";
     } else if (rawName === "write" || detailType === "write") {
       toolKind = "write";
-      title = filePath ? `Write ${filePath.split(/[/\\]/).pop() || filePath}` : "Write file";
+      title = filePath ? filePath.split(/[/\\]/).pop() || filePath : "Write file";
     } else if (rawName === "edit" || detailType === "edit") {
       toolKind = "edit";
-      title = filePath ? `Edit ${filePath.split(/[/\\]/).pop() || filePath}` : "Edit file";
+      title = filePath ? filePath.split(/[/\\]/).pop() || filePath : "Edit file";
     } else if (classifyShellTool(rawName, detailType)) {
       toolKind = classifyShellTool(rawName, detailType) ?? "bash";
       title = command ? `$ ${command.trim()}` : "Execute command";
@@ -591,7 +613,10 @@ export function LiveToolCallRenderer({
       // A github card reads its typed record; leaving `code` and `output` set
       // would draw the request and the reply a second time.
       code: toolKind === "github" ? undefined : code,
+      startLine,
       diff,
+      diffComputed: !providerDiff && computedEditDiff !== undefined ? true : undefined,
+      editNewText: !providerDiff && computedEditDiff !== undefined ? editNew : undefined,
       output: toolKind === "github" || evalCells.length > 0 ? undefined : outputText || errorText,
       cells: evalCells.length > 0 ? evalCells : undefined,
       askOptions: askOptions.length > 0 ? askOptions : undefined,
@@ -633,6 +658,15 @@ export function LiveToolCallRenderer({
 
   // Only a read or write of an image asks the daemon for bytes; the hook
   // itself refuses every other path, so a code read costs no RPC.
+  // A diff built from old and new text knows the change but not its place in
+  // the file, so the daemon is asked where the written text sits.
+  const editLine = useEditAnchor(
+    calloutData.filePath,
+    cwd ?? null,
+    calloutData.editNewText,
+    calloutData.status === "completed",
+  );
+
   const imageFile = useImageFile(
     calloutData.tool === "read" || calloutData.tool === "write" ? calloutData.filePath : undefined,
     cwd,
@@ -647,6 +681,7 @@ export function LiveToolCallRenderer({
         autoCollapse={preferences.autoCollapseTools}
         onRevealPath={handleRevealPath}
         imageFile={imageFile}
+        editLine={editLine}
       />
       <TimelineTailHub
         agentId={agentId}

@@ -102,8 +102,11 @@ export interface ExtendedThemeTokens {
     function: string;
     diffAddBg: string;
     diffAddMarker: string;
+    /** The changed span inside an added row, a step stronger than the row. */
+    diffAddEmphasisBg: string;
     diffRemoveBg: string;
     diffRemoveMarker: string;
+    diffRemoveEmphasisBg: string;
     hunk: string;
   };
 }
@@ -260,8 +263,10 @@ export function buildThemeTokens(
       function: isDark ? "#dcbdfb" : "#8250df",
       diffAddBg: withAlpha(success, tint),
       diffAddMarker: success,
+      diffAddEmphasisBg: withAlpha(success, isDark ? 0.34 : 0.28),
       diffRemoveBg: withAlpha(danger, tint),
       diffRemoveMarker: danger,
+      diffRemoveEmphasisBg: withAlpha(danger, isDark ? 0.34 : 0.28),
       hunk: withAlpha(colors.foregroundMuted, 0.7),
     },
   };
