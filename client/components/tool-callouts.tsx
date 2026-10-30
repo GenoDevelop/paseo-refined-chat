@@ -13,7 +13,8 @@ import { countDiffLines, offsetHunkHeaders } from "./diff-text";
 import type { ExtendedThemeTokens } from "./theme-tokens";
 import { HubCallout } from "./hub-callout";
 import { PaseoToolCallout } from "./paseo-tool-callouts";
-import { SyntaxHighlightBlock, renderTerminalOutput } from "./syntax-highlight";
+import { SyntaxHighlightBlock } from "./syntax-highlight";
+import { FoldedOutput } from "./folded-output";
 import { FileTypeLogo } from "./file-type-logo";
 import { ImagePreview } from "./image-preview";
 import { GitHubBody } from "./github-body";
@@ -66,6 +67,10 @@ interface ToolCalloutProps {
    * diff without line numbers, since its own positions are relative.
    */
   editLine?: number | null;
+  /** Lines of command output shown before the middle folds; 0 shows all. */
+  shellMaxLines?: number;
+  /** Lines of code and diffs shown before the rest folds; 0 shows all. */
+  codeMaxLines?: number;
 }
 
 export function ToolCallout({
@@ -76,6 +81,8 @@ export function ToolCallout({
   onRevealPath,
   imageFile,
   editLine,
+  shellMaxLines = 0,
+  codeMaxLines = 0,
 }: ToolCalloutProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [touched, setTouched] = useState(false);
@@ -110,6 +117,10 @@ export function ToolCallout({
   const isSuccess = data.status === "completed";
   const isRunning = data.status === "running";
   const isFailed = data.status === "failed";
+  // A running call is still printing, so folding it would move the page under
+  // the reader as it grows.
+  const shellLimit = isRunning ? 0 : shellMaxLines;
+  const codeLimit = isRunning ? 0 : codeMaxLines;
 
   // A user who pressed the card owns its state from then on; auto-collapse
   // only ever folds a card nobody has touched. An ask card carries the
@@ -650,9 +661,12 @@ export function ToolCallout({
               )}
 
               {data.shell?.stdout && (
-                <Text selectable {...selectionCodeText} style={styles.terminalOutput}>
-                  {renderTerminalOutput(data.shell.stdout, tokens)}
-                </Text>
+                <FoldedOutput
+                  text={data.shell.stdout}
+                  limit={shellLimit}
+                  tokens={tokens}
+                  textStyle={styles.terminalOutput}
+                />
               )}
               {data.shell?.stderr && (
                 <Text selectable style={[styles.terminalOutput, { color: tokens.danger }]}>
@@ -660,9 +674,12 @@ export function ToolCallout({
                 </Text>
               )}
               {data.output && !data.shell?.stdout && (
-                <Text selectable {...selectionCodeText} style={styles.terminalOutput}>
-                  {renderTerminalOutput(data.output, tokens)}
-                </Text>
+                <FoldedOutput
+                  text={data.output}
+                  limit={shellLimit}
+                  tokens={tokens}
+                  textStyle={styles.terminalOutput}
+                />
               )}
               {!data.shell?.stdout && !data.shell?.stderr && !data.output && (
                 <Text selectable style={styles.silentCommandText}>
@@ -830,6 +847,7 @@ export function ToolCallout({
                 tokens={tokens}
                 showLineNumbers={Boolean(data.code)}
                 startLine={data.startLine}
+                maxLines={codeLimit}
                 onRevealFile={revealFile}
                 compact
               />
@@ -848,6 +866,7 @@ export function ToolCallout({
               filename={data.filePath}
               tokens={tokens}
               relativeDiff={data.diffComputed && !editLine}
+              maxLines={codeLimit}
               showLineNumbers
               onRevealFile={revealFile}
               compact
@@ -881,9 +900,12 @@ export function ToolCallout({
                       <Text selectable style={styles.evalOutputLabel}>
                         stdout
                       </Text>
-                      <Text selectable {...selectionCodeText} style={styles.evalOutputText}>
-                        {renderTerminalOutput(cell.output, tokens)}
-                      </Text>
+                      <FoldedOutput
+                        text={cell.output}
+                        limit={shellLimit}
+                        tokens={tokens}
+                        textStyle={styles.evalOutputText}
+                      />
                     </View>
                   ) : null}
                 </View>
@@ -960,9 +982,12 @@ export function ToolCallout({
           {!hasTypedBody && (
             <View style={styles.terminalWindow}>
               {data.output ? (
-                <Text selectable {...selectionCodeText} style={styles.terminalOutput}>
-                  {renderTerminalOutput(data.output, tokens)}
-                </Text>
+                <FoldedOutput
+                  text={data.output}
+                  limit={shellLimit}
+                  tokens={tokens}
+                  textStyle={styles.terminalOutput}
+                />
               ) : (
                 <Text selectable style={styles.silentCommandText}>
                   {isRunning ? "Waiting for output…" : "The call returned no output."}

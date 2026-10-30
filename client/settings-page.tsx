@@ -5,6 +5,7 @@ import { hostFontEscape } from "./components/host-font-escape";
 import { radius, buildThemeTokens, type ExtendedThemeTokens } from "./components/theme-tokens";
 import {
   ACCENT_PRESETS,
+  LINE_LIMIT_MAX,
   TYPOGRAPHY_SCALE_MIN,
   TYPOGRAPHY_SCALE_MAX,
   resetEnhancerPreferences,
@@ -300,6 +301,90 @@ function PercentageRow({
   );
 }
 
+/** A whole-number field: lines shown before long output folds, zero for never. */
+function LineLimitRow({
+  title,
+  description,
+  value,
+  onChange,
+  tokens,
+}: {
+  title: string;
+  description: string;
+  value: number;
+  onChange(value: number): void;
+  tokens: ExtendedThemeTokens;
+}) {
+  const [draft, setDraft] = useState(() => String(value));
+  const [invalid, setInvalid] = useState(false);
+
+  useEffect(() => {
+    setDraft(String(value));
+    setInvalid(false);
+  }, [value]);
+
+  function commit() {
+    const input = draft.trim();
+    const lines = input ? Number(input) : NaN;
+    if (!Number.isInteger(lines) || lines < 0 || lines > LINE_LIMIT_MAX) {
+      setInvalid(true);
+      return;
+    }
+    setInvalid(false);
+    setDraft(String(lines));
+    if (lines !== value) onChange(lines);
+  }
+
+  return (
+    <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
+      <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+        {title}
+      </Text>
+      <Text
+        style={[
+          styles.rowDescription,
+          { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
+        ]}
+      >
+        {description}
+      </Text>
+      <View style={styles.percentInputRow}>
+        <TextInput
+          value={draft}
+          onChangeText={(next) => {
+            setDraft(next);
+            setInvalid(false);
+          }}
+          onBlur={commit}
+          onSubmitEditing={commit}
+          accessibilityLabel={title}
+          accessibilityHint="Enter a number of lines and press Enter to apply"
+          keyboardType="number-pad"
+          returnKeyType="done"
+          maxLength={5}
+          style={[
+            styles.percentInput,
+            {
+              color: tokens.foreground,
+              backgroundColor: tokens.surface2,
+              borderColor: invalid ? tokens.danger : tokens.border,
+              fontFamily: tokens.fontUi,
+            },
+          ]}
+        />
+        <Text style={[styles.percentUnit, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+          lines
+        </Text>
+      </View>
+      {invalid ? (
+        <Text style={[styles.rowDescription, { color: tokens.danger }]}>
+          Enter a whole number from 0 to {LINE_LIMIT_MAX}.
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 /** Settings content mounted by Paseo under the selected host's Plugin settings. */
 export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
   const preferences = useEnhancerPreferences();
@@ -427,6 +512,22 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           description="Fenced code, diffs, line numbers, terminal and other code output. Inline code follows replies."
           value={preferences.codeScale}
           onChange={(codeScale) => updateEnhancerPreferences({ codeScale })}
+          tokens={tokens}
+        />
+
+        <LineLimitRow
+          title="Long terminal output"
+          description="Command output past this many lines keeps its start and its end and folds the middle. 0 never folds."
+          value={preferences.shellMaxLines}
+          onChange={(shellMaxLines) => updateEnhancerPreferences({ shellMaxLines })}
+          tokens={tokens}
+        />
+
+        <LineLimitRow
+          title="Long code and diffs"
+          description="File reads, writes and diffs past this many lines show the first lines and fold the rest. 0 never folds."
+          value={preferences.codeMaxLines}
+          onChange={(codeMaxLines) => updateEnhancerPreferences({ codeMaxLines })}
           tokens={tokens}
         />
 

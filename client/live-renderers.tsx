@@ -682,6 +682,8 @@ export function LiveToolCallRenderer({
         onRevealPath={handleRevealPath}
         imageFile={imageFile}
         editLine={editLine}
+        shellMaxLines={preferences.shellMaxLines}
+        codeMaxLines={preferences.codeMaxLines}
       />
       <TimelineTailHub
         agentId={agentId}

@@ -1,4 +1,5 @@
 import { getEnhancerPreferences } from "../preferences";
+import { revealMatching } from "../fold";
 
 const STYLE_ELEMENT_ID = "refined-chat-find-style";
 const BAR_ID = "refined-chat-find";
@@ -180,6 +181,7 @@ export function installChatFind(): () => void {
   let ranges: Range[] = [];
   let current = -1;
   let lastTarget: EventTarget | null = null;
+  let restores: (() => void)[] = [];
 
   const bar = document.createElement("div");
   bar.id = BAR_ID;
@@ -233,7 +235,28 @@ export function installChatFind(): () => void {
     active?.startContainer.parentElement?.scrollIntoView({ block: "center" });
   }
 
+  /**
+   * Opens the folded blocks that hold the phrase, since a folded line is not on
+   * the page for the search to read. True when something opened, in which case
+   * the caller must wait for the page to render the new lines before reading it.
+   */
+  function revealFolded(): boolean {
+    const opened = revealMatching(input.value);
+    restores.push(...opened);
+    return opened.length > 0;
+  }
+
+  function afterRender(run: () => void) {
+    requestAnimationFrame(() => requestAnimationFrame(run));
+  }
+
   function search() {
+    if (!chat?.isConnected) return close();
+    if (revealFolded()) afterRender(runSearch);
+    else runSearch();
+  }
+
+  function runSearch() {
     if (!chat?.isConnected) return close();
     ranges = findMatches(chat, input.value);
     // Start from the first match at or below the top of what is on screen.
@@ -244,6 +267,12 @@ export function installChatFind(): () => void {
   }
 
   function step(direction: 1 | -1) {
+    if (!chat?.isConnected) return close();
+    if (revealFolded()) afterRender(() => runStep(direction));
+    else runStep(direction);
+  }
+
+  function runStep(direction: 1 | -1) {
     if (!chat?.isConnected) return close();
     // Rows mount, unmount and stream while the bar is open, so re-read the page
     // and continue from the same occurrence when it is still there.
@@ -266,6 +295,10 @@ export function installChatFind(): () => void {
   }
 
   function close() {
+    // Blocks the search opened go back to folded, so closing the bar leaves the
+    // page as it was.
+    for (const restore of restores) restore();
+    restores = [];
     bar.hidden = true;
     chat = null;
     ranges = [];
