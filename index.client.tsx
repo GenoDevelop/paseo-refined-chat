@@ -160,6 +160,13 @@ export default function contribute(client: PluginClientContext) {
       // Replacing the item drops whatever this renderer does not carry, so a
       // message with an attachment it cannot show is left to the host.
       if (images.hasUnrenderable) return undefined;
+      // A prompt with no text is a pasted image and nothing else. The host
+      // withholds the image from the plugin, so there is nothing here to draw:
+      // an empty bubble would replace the screenshot with a blank. The host's
+      // own bubble still has the image. A prompt with text and an image cannot
+      // be told from a plain one, so it still loses the image; see the
+      // `enhancedUserBubble` preference.
+      if (item.text.trim() === "" && images.uris.length === 0) return undefined;
       // `messageId` rides along so the renderer can carry the host's own
       // `data-history-row-id`, which is the id the chat outline scrolls to.
       // Replacing the item leaves the outline nothing to find otherwise.

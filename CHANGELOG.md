@@ -17,6 +17,7 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 - The time under a prompt or a reply always includes seconds, and carries the weekday (within a week) or the date (older) when the message is not from today. Prompts previously showed only the clock.
 
 ### Fixed
+- A prompt that is only a pasted image is left to Paseo's own bubble instead of being redrawn as an empty one. A prompt with text and an image still loses the image in the enhanced bubble, because Paseo does not pass images to plugins; the "Enhanced prompt bubble" setting hands prompts back to the host.
 - Shell tool cards show the full command: the header is one line ending in an ellipsis instead of cutting the command at 55 characters, and the expanded card shows the whole command above its output.
 - PowerShell, pwsh, cmd and other command-line tools are drawn as shell cards with a `$ command` title. Previously they got the tool name as title and a `bash` label.
 - A tool result delivered as a list of text blocks (as Claude does) is shown instead of "Command completed without output."
