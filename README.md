@@ -19,6 +19,7 @@ See [LICENSE](LICENSE), [NOTICE.md](NOTICE.md), and
 
 Use `npm ci` followed by `npm run typecheck` locally. CI is deliberately
 **not configured** to avoid GitHub Actions runner usage.
+For a manual release procedure, see [docs/RELEASING.md](docs/RELEASING.md).
 
 
 A Paseo plugin that redraws the Oh My Pi (OMP) chat stream: tool calls, reasoning, prompts, approvals,
@@ -27,21 +28,28 @@ that follow the active Paseo theme.
 
 ![A prompt, a tool call, a finished background job, and the reply that closes the turn](images/hero.png)
 
-The screenshots illustrate the original chat surfaces using sample data; they do not yet show every new typography setting. Source images come from the Beautiful Chat baseline and are retained with attribution.
+The chat screenshots were inherited from the original Beautiful Chat showcase and represent the default chat styling. They do not yet show Refined Chat's added typography controls. A current screenshot of the Refined Chat settings should be captured before submitting to the Paseo catalog.
 The baseline showcase component was rendered using `.showcase/`.
 [One whole turn, top to bottom](images/thread.png) shows the cards in the order the timeline draws
 them.
 
 ## Install
 
-Before the plugin is approved in the Paseo catalog, install directly from GitHub:
+Before the plugin is approved in the Paseo catalog, install directly
+from the public GitHub repository (this works without a release tag):
+
+```bash
+paseo plugin add git:GenoDevelop/refined-chat
+```
+
+After the `v0.2.0` tag is published, you can pin the initial installation to
+that release instead:
 
 ```bash
 paseo plugin add git:GenoDevelop/refined-chat --ref v0.2.0
 ```
 
-The version tag above is available **after** the GitHub release is published.
-To test the latest main branch instead, omit `--ref v0.2.0`.
+The tagged command will not work until the tag exists.
 
 After registry approval, the shorter catalog command becomes available:
 
