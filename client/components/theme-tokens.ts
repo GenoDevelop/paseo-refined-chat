@@ -196,7 +196,7 @@ export function buildThemeTokens(
     fontUi: preferences.uiFont === "system" ? "System" : fontUi,
 
     scales,
-    fs: (base, area = "tool") =>
+    fs: (base: number, area: "reply" | "tool" | "code" = "tool") =>
       Math.round(base * scales[area] * 100) / 100,
 
     surface0: colors.surface0,
