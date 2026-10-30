@@ -13,16 +13,23 @@ export type UiFontPreference = "inter" | "system";
 export type CodeFontPreference = "code" | "plain";
 export type MarkdownVariantPreference = "document" | "compact" | "terminal";
 
-/** Multiplier applied to every font size the plugin draws. */
-export const TEXT_SCALE_MIN = 0.85;
-export const TEXT_SCALE_MAX = 1.35;
+/** Arbitrary percentage input, with safety bounds to avoid unreadable layouts. */
+export const TYPOGRAPHY_SCALE_MIN = 0.5; // 50%
+export const TYPOGRAPHY_SCALE_MAX = 3; // 300%
+
+export function sanitizeTypographyScale(value: unknown, fallback = 1): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(TYPOGRAPHY_SCALE_MIN, Math.min(TYPOGRAPHY_SCALE_MAX, value));
+}
 
 export interface EnhancerPreferences {
   accent: AccentPreset;
   uiFont: UiFontPreference;
   codeFont: CodeFontPreference;
-  /** Scales every text style the plugin renders; 1 is the authored size. */
-  textScale: number;
+  /** Independent scale factors (1 = 100%) for replies, tool UI and code. */
+  replyScale: number;
+  toolScale: number;
+  codeScale: number;
   frostedGlass: boolean;
   /**
    * A light that follows the pointer across a card. Web and desktop only:
@@ -66,12 +73,15 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   accent: "host",
   uiFont: "inter",
   codeFont: "code",
-  textScale: 1,
+  replyScale: 1,
+  toolScale: 1,
+  codeScale: 1,
   frostedGlass: true,
   pointerGlow: true,
   enhancedUserBubble: true,
-  autoCollapseTools: true,
-  collapseThinking: true,
+  // Preserve Beautiful Chat's original behavior until explicitly enabled.
+  autoCollapseTools: false,
+  collapseThinking: false,
   selectionActions: true,
   assistantMarkdown: true,
   markdownVariant: "document",
@@ -97,10 +107,9 @@ function loadPreferences(): EnhancerPreferences {
       accent: isAccentPreset(candidate.accent) ? candidate.accent : DEFAULT_PREFERENCES.accent,
       uiFont: candidate.uiFont === "system" ? "system" : DEFAULT_PREFERENCES.uiFont,
       codeFont: candidate.codeFont === "plain" ? "plain" : DEFAULT_PREFERENCES.codeFont,
-      textScale:
-        typeof candidate.textScale === "number" && Number.isFinite(candidate.textScale)
-          ? Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, candidate.textScale))
-          : DEFAULT_PREFERENCES.textScale,
+      replyScale: sanitizeTypographyScale(candidate.replyScale),
+      toolScale: sanitizeTypographyScale(candidate.toolScale),
+      codeScale: sanitizeTypographyScale(candidate.codeScale),
       frostedGlass:
         typeof candidate.frostedGlass === "boolean"
           ? candidate.frostedGlass
