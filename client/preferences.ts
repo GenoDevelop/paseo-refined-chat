@@ -13,10 +13,16 @@ export type UiFontPreference = "inter" | "system";
 export type CodeFontPreference = "code" | "plain";
 export type MarkdownVariantPreference = "document" | "compact" | "terminal";
 
+/** Multiplier applied to every font size the plugin draws. */
+export const TEXT_SCALE_MIN = 0.85;
+export const TEXT_SCALE_MAX = 1.35;
+
 export interface EnhancerPreferences {
   accent: AccentPreset;
   uiFont: UiFontPreference;
   codeFont: CodeFontPreference;
+  /** Scales every text style the plugin renders; 1 is the authored size. */
+  textScale: number;
   frostedGlass: boolean;
   /**
    * A light that follows the pointer across a card. Web and desktop only:
@@ -30,6 +36,13 @@ export interface EnhancerPreferences {
    * hands prompts back to the host, whose own bubble still shows them.
    */
   enhancedUserBubble: boolean;
+  /**
+   * Folds a finished tool card back up on its own. A card the user opened or
+   * closed keeps its state, and a failed call always stays open.
+   */
+  autoCollapseTools: boolean;
+  /** Starts a thinking stream folded instead of following it live. */
+  collapseThinking: boolean;
   /**
    * The Copy / Add to chat bar that follows a highlight. Web and desktop only:
    * iOS and Android route selection through the platform's own menu, which the
@@ -53,9 +66,12 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   accent: "host",
   uiFont: "inter",
   codeFont: "code",
+  textScale: 1,
   frostedGlass: true,
   pointerGlow: true,
   enhancedUserBubble: true,
+  autoCollapseTools: true,
+  collapseThinking: true,
   selectionActions: true,
   assistantMarkdown: true,
   markdownVariant: "document",
@@ -81,6 +97,10 @@ function loadPreferences(): EnhancerPreferences {
       accent: isAccentPreset(candidate.accent) ? candidate.accent : DEFAULT_PREFERENCES.accent,
       uiFont: candidate.uiFont === "system" ? "system" : DEFAULT_PREFERENCES.uiFont,
       codeFont: candidate.codeFont === "plain" ? "plain" : DEFAULT_PREFERENCES.codeFont,
+      textScale:
+        typeof candidate.textScale === "number" && Number.isFinite(candidate.textScale)
+          ? Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, candidate.textScale))
+          : DEFAULT_PREFERENCES.textScale,
       frostedGlass:
         typeof candidate.frostedGlass === "boolean"
           ? candidate.frostedGlass
@@ -93,6 +113,14 @@ function loadPreferences(): EnhancerPreferences {
         typeof candidate.enhancedUserBubble === "boolean"
           ? candidate.enhancedUserBubble
           : DEFAULT_PREFERENCES.enhancedUserBubble,
+      autoCollapseTools:
+        typeof candidate.autoCollapseTools === "boolean"
+          ? candidate.autoCollapseTools
+          : DEFAULT_PREFERENCES.autoCollapseTools,
+      collapseThinking:
+        typeof candidate.collapseThinking === "boolean"
+          ? candidate.collapseThinking
+          : DEFAULT_PREFERENCES.collapseThinking,
       selectionActions:
         typeof candidate.selectionActions === "boolean"
           ? candidate.selectionActions
