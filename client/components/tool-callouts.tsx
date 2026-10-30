@@ -61,7 +61,7 @@ export function ToolCallout({
   data,
   tokens,
   defaultExpanded = true,
-  autoCollapse = true,
+  autoCollapse = false,
   onRevealPath,
   imageFile,
 }: ToolCalloutProps) {
