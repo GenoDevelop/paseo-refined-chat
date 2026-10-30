@@ -62,6 +62,15 @@ export function ImageViewer({
     null,
   );
 
+  // Where a two-finger gesture began: how far apart the fingers were, the zoom
+  // and offset then, and the point between them.
+  const pinch = useRef<{
+    distance: number;
+    zoom: number;
+    middle: { x: number; y: number };
+    offset: { x: number; y: number };
+  } | null>(null);
+
   const known = Boolean(width && height);
   const naturalWidth = width ?? 0;
   const naturalHeight = height ?? 0;
@@ -133,6 +142,9 @@ export function ImageViewer({
             web ? ({ cursor: zoom > 1 ? "grab" : "default" } as unknown as ViewStyle) : null,
           ]}
           onStartShouldSetResponder={() => true}
+          onMoveShouldSetResponder={() => true}
+          // A second finger must not hand the gesture to whatever sits behind.
+          onResponderTerminationRequest={() => false}
           onResponderGrant={(event) => {
             drag.current = {
               x: event.nativeEvent.pageX,
@@ -142,15 +154,47 @@ export function ImageViewer({
             };
           }}
           onResponderMove={(event) => {
-            const start = drag.current;
-            if (!start) return;
-            const dx = event.nativeEvent.pageX - start.x;
-            const dy = event.nativeEvent.pageY - start.y;
+            const touches = event.nativeEvent.touches;
+            if (touches.length >= 2) {
+              // Two fingers: the picture follows them. The point under the
+              // fingers' midpoint when they landed stays under it as they spread
+              // or close, so a pinch zooms where the reader is looking, and
+              // moving both fingers together moves the picture.
+              const [a, b] = [touches[0]!, touches[1]!];
+              const distance = Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY);
+              const middle = {
+                x: (a.pageX + b.pageX) / 2 - window.width / 2,
+                y: (a.pageY + b.pageY) / 2 - window.height / 2,
+              };
+              const start = pinch.current ?? { distance, zoom, middle, offset };
+              pinch.current = start;
+              drag.current = null;
+              if (start.distance < 1) return;
+              const target = clamp(start.zoom * (distance / start.distance), MIN_ZOOM, MAX_ZOOM);
+              const ratio = target / start.zoom;
+              setZoom(target);
+              setOffset({
+                x: middle.x - (start.middle.x - start.offset.x) * ratio,
+                y: middle.y - (start.middle.y - start.offset.y) * ratio,
+              });
+              return;
+            }
+
+            // Back to one finger after a pinch: begin a fresh drag from here, so
+            // the picture does not jump to where the first finger first landed.
+            pinch.current = null;
+            const point = touches[0] ?? event.nativeEvent;
+            const start =
+              drag.current ??
+              (drag.current = { x: point.pageX, y: point.pageY, from: offset, moved: false });
+            const dx = point.pageX - start.x;
+            const dy = point.pageY - start.y;
             if (Math.abs(dx) + Math.abs(dy) > DRAG_SLOP) start.moved = true;
             if (start.moved) setOffset({ x: start.from.x + dx, y: start.from.y + dy });
           }}
           onResponderRelease={() => {
             drag.current = null;
+            pinch.current = null;
           }}
         >
           <Image

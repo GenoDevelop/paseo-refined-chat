@@ -141,7 +141,7 @@ When an agent writes `![description](file:///path/to/image.png)` on a line of it
 shows the picture: a small thumbnail with no frame, several in a row when they follow one another,
 and the description, size and weight over it while the pointer rests on it. A click opens it in a
 viewer that never draws it larger than its own size; the wheel zooms around the pointer, a drag
-moves it, and the buttons give zoom, 1:1 and fit.
+moves it, two fingers pinch it on a touch screen, and the buttons give zoom, 1:1 and fit.
 
 Local files and `data:` images load at once. A remote `http(s)` image waits as a tile that names
 the server and has a **Load** button, because the agent writes the address and a prompt injection
