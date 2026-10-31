@@ -30,6 +30,11 @@ From the Paseo catalog:
 paseo plugin add genodevelop/refined-chat
 ```
 
+The plugin installs under the ID `refined-chat`. If you already have a plugin with that ID (an
+earlier install from Git, say), Paseo refuses with `Plugin ID "refined-chat" is already configured`:
+remove the old one with `paseo plugin remove refined-chat`, or give the new one another ID with
+`--id`, for example `paseo plugin add genodevelop/refined-chat --id refined-chat-catalog`.
+
 The catalog installs a revision a reviewer has checked, and a new version reaches it
 only when it is submitted again. To follow `main` instead, install from the
 public GitHub repository:
@@ -235,8 +240,8 @@ Paseo's own file editor, which plugins cannot target: see the first
 
 ## What the plugin reads
 
-The plugin sends no telemetry and collects no credentials. Four things run on the daemon, each
-when a card needs it:
+The plugin sends no telemetry and collects no credentials. Six things run on the daemon, each
+when a card or a pressed path needs it:
 
 | Purpose | What it reads |
 | --- | --- |
@@ -244,9 +249,13 @@ when a card needs it:
 | Edit line numbers | The file an edit refers to, up to 5 MB, to find where the text sits. Only a line number comes back. |
 | Syntax highlighting | The code a card shows, parsed by libraries installed with the plugin. |
 | Showing a file (`file.reveal`) | Nothing: it asks the platform file manager to select the path, without a shell command. |
+| File or folder (`file.kind`) | Nothing: a `stat` of a path from a reply, answering file, folder or missing. |
+| Side panel (`file.read`) | The text of the file you pressed, up to 1 MB, only inside the agent's working directory unless you turn on **Preview files outside the project**. The text goes to your own panel. |
 
-These paths are not limited to the agent's working directory. A remote image in a reply is not
-fetched until you press **Load**, unless you turn on automatic loading.
+Image previews, edit line numbers, `file.reveal` and `file.kind` are not limited to the agent's
+working directory; `file.read` is, by default. `file.reveal`, `file.kind` and `file.read` refuse a
+network path (`\\host\share`) before any lookup. A remote image in a reply is not fetched until you
+press **Load**, unless you turn on automatic loading.
 
 ## Finding text
 
@@ -275,7 +284,9 @@ timestamp, item}`, and plugin navigation offers only `openSettings`, `openSurfac
    `openWorkspacePanel`, `openAgentPanel`, `openAgent`, and `openWorkspace`. The host's own file tab
    target (`{kind:"file", path}`, reachable in-app through `?open=file:<path>`) is not exposed, and
    the `paseo://` scheme only carries agent deep links. Workaround: a daemon-side RPC that reveals
-   the path in the operating system's file manager.
+   the path in the operating system's file manager, and, since 0.14.0 (`addWorkspacePanel` and
+   `openPanel`), the plugin's own read-only File preview panel in the side view. `openPanel` takes no
+   parameters, so the path reaches the panel through a store on the client.
 2. **Transformers see a stripped item.** The app maps its stream item to the plugin item before any
    transformer runs, and a user message keeps only `text`, `messageId`, and `clientMessageId`. Pasted
    images never reach plugin code, and the daemon timeline row stores the same item, so a server RPC
