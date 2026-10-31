@@ -202,7 +202,8 @@ text extension, so `v1.beta` stays text. The path comes from the agent, so netwo
 or runs it. A link carries a file icon and, on hover, a bubble saying what pressing does.
 
 By default pressing a file path opens a read-only **File preview** panel in Paseo's side view, with
-syntax colours and line numbers; a second press replaces the file in the open panel. The panel reads the
+syntax colours and line numbers (a Markdown file opens rendered, with a button for its source); a second
+press replaces the file in the open panel. The panel reads the
 file through a second daemon-side RPC (`file.read`), which is stricter than `file.reveal` because it
 returns contents: the file must be inside the agent's working directory once symbolic links are
 resolved, at most 1 MB, and text. Any other file, and every folder, goes to the file manager instead (the

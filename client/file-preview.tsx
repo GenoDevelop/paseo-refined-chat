@@ -4,6 +4,7 @@ import type { PluginWorkspacePanelProps } from "@getpaseo/plugin/client";
 import { useRpc } from "@getpaseo/plugin/client";
 import { ScrollView } from "@getpaseo/plugin/client/react-native";
 import { hostFontEscape } from "./components/host-font-escape";
+import { MarkdownView } from "./components/markdown/markdown-view";
 import { SyntaxHighlightBlock } from "./components/syntax-highlight";
 import { buildThemeTokens, radius, type ExtendedThemeTokens } from "./components/theme-tokens";
 import { readFileRpc, revealPathRpc, stripSelector, MAX_PREVIEW_BYTES } from "../shared/file-rpc";
@@ -74,6 +75,8 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
   const readFile = useRpc(readFileRpc);
   const revealPath = useRpc(revealPathRpc);
   const [load, setLoad] = useState<Load>({ state: "loading" });
+  // A Markdown file opens rendered; the reader can flip to its source.
+  const [view, setView] = useState<"rendered" | "source">("rendered");
 
   useEffect(() => {
     if (!current) return;
@@ -108,6 +111,7 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
   }
 
   const name = stripSelector(current.path);
+  const isMarkdown = /\.(md|markdown|mdx)$/i.test(name);
   return (
     <View {...hostFontEscape} style={{ flex: 1 }}>
       <View
@@ -133,6 +137,26 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
         >
           {name}
         </Text>
+        {isMarkdown ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={view === "rendered" ? "Show the source" : "Show rendered"}
+            onPress={() => setView(view === "rendered" ? "source" : "rendered")}
+            style={{
+              borderWidth: 1,
+              borderColor: tokens.border,
+              borderRadius: radius.block,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+            }}
+          >
+            <Text
+              style={{ color: tokens.foregroundMuted, fontFamily: tokens.fontUi, fontSize: tokens.fs(11) }}
+            >
+              {view === "rendered" ? "Source" : "Rendered"}
+            </Text>
+          </Pressable>
+        ) : null}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Show in file manager"
@@ -154,13 +178,24 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
       </View>
       {load.state === "ready" ? (
         <ScrollView style={{ flex: 1 }}>
-          <SyntaxHighlightBlock
-            code={load.text}
-            filename={name}
-            tokens={tokens}
-            showLineNumbers
-            compact
-          />
+          {isMarkdown && view === "rendered" ? (
+            <View style={{ padding: 16 }}>
+              <MarkdownView
+                text={load.text}
+                tokens={tokens}
+                variant={preferences.markdownVariant}
+                marks={preferences.highlightMarks}
+              />
+            </View>
+          ) : (
+            <SyntaxHighlightBlock
+              code={load.text}
+              filename={name}
+              tokens={tokens}
+              showLineNumbers
+              compact
+            />
+          )}
         </ScrollView>
       ) : (
         <Message
