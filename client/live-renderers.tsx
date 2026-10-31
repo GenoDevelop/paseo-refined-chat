@@ -862,7 +862,12 @@ export function LiveAssistantRenderer({
       {envelope ? (
         <SystemCard envelope={envelope} tokens={tokens} />
       ) : (
-        <MarkdownView text={item.data.text} tokens={tokens} variant={preferences.markdownVariant} />
+        <MarkdownView
+          text={item.data.text}
+          tokens={tokens}
+          variant={preferences.markdownVariant}
+          marks={preferences.highlightMarks}
+        />
       )}
       {isTail && !envelope ? (
         <AssistantFooter text={item.data.text} at={timestamp} tokens={tokens} />

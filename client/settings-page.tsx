@@ -1,13 +1,26 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
 import { COLLAPSE_KINDS, COLLAPSE_KIND_LABELS } from "./tool-collapse";
 import type { CollapseKind } from "./tool-collapse";
 import { Glyph } from "./components/glyph";
 import { hostFontEscape } from "./components/host-font-escape";
-import { radius, buildThemeTokens, type ExtendedThemeTokens } from "./components/theme-tokens";
 import {
-  ACCENT_PRESETS,
+  radius,
+  buildThemeTokens,
+  type ExtendedThemeTokens,
+} from "./components/theme-tokens";
+import {
+  PALETTE,
+  HEX_COLOR,
   LINE_LIMIT_MAX,
   TYPOGRAPHY_SCALE_MIN,
   TYPOGRAPHY_SCALE_MAX,
@@ -16,22 +29,231 @@ import {
   resetEnhancerPreferences,
   updateEnhancerPreferences,
   useEnhancerPreferences,
-  type AccentPreset,
+  type AccentChoice,
+  type BoldColorChoice,
+  type MarkColorChoice,
+  type PaletteColor,
   type CodeFontPreference,
   type UiFontPreference,
 } from "./preferences";
 
-const ACCENT_OPTIONS: ReadonlyArray<{
-  id: AccentPreset;
-  label: string;
-  color: string | undefined;
-}> = [
-  { id: "host", label: "Host theme", color: undefined },
-  { id: "jade", label: "Jade", color: ACCENT_PRESETS.jade },
-  { id: "violet", label: "Violet", color: ACCENT_PRESETS.violet },
-  { id: "amber", label: "Amber", color: ACCENT_PRESETS.amber },
-  { id: "rose", label: "Rose", color: ACCENT_PRESETS.rose },
-];
+/** The shared palette as swatch options, so every colour setting offers the same names. */
+const PALETTE_OPTIONS = (Object.keys(PALETTE) as PaletteColor[]).map((name) => ({
+  value: name,
+  label: name.charAt(0).toUpperCase() + name.slice(1),
+  color: PALETTE[name] as string | undefined,
+}));
+
+const HUE_STEPS = 24;
+
+/** One hue at the picker's fixed saturation and lightness, as hex. */
+function hueToHex(hue: number): string {
+  const saturation = 0.72;
+  const lightness = 0.55;
+  const a = saturation * Math.min(lightness, 1 - lightness);
+  const channel = (n: number) => {
+    const k = (n + hue / 30) % 12;
+    const value = lightness - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(255 * value)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(0)}${channel(8)}${channel(4)}`;
+}
+
+/**
+ * A colour picker from the runtime's own primitives: a strip of hue steps for
+ * a quick pick and a hex field for an exact colour. The plugin sandbox admits
+ * no SVG for a gradient, and twenty-four steps read as continuous at this width.
+ */
+function ColourPicker({
+  hex,
+  onChange,
+  tokens,
+}: {
+  hex: string;
+  onChange(hex: string): void;
+  tokens: ExtendedThemeTokens;
+}) {
+  const [draft, setDraft] = useState(hex);
+  useEffect(() => setDraft(hex), [hex]);
+  const valid = HEX_COLOR.test(draft);
+
+  function commit() {
+    if (valid) onChange(draft.toLowerCase());
+    else setDraft(hex);
+  }
+
+  return (
+    <View style={styles.picker}>
+      <View style={styles.hueStrip}>
+        {Array.from({ length: HUE_STEPS }, (_, index) => {
+          const hue = Math.round((360 / HUE_STEPS) * index);
+          const color = hueToHex(hue);
+          return (
+            <Pressable
+              key={hue}
+              accessibilityRole="button"
+              accessibilityLabel={`Hue ${hue} degrees`}
+              onPress={() => onChange(color)}
+              style={[styles.hueChip, { backgroundColor: color }]}
+            />
+          );
+        })}
+      </View>
+      <View style={styles.percentInputRow}>
+        <View
+          style={[
+            styles.swatch,
+            styles.pickerSwatch,
+            { backgroundColor: valid ? draft : tokens.border },
+          ]}
+        />
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          onBlur={commit}
+          onSubmitEditing={commit}
+          accessibilityLabel="Hex colour"
+          maxLength={7}
+          autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
+          placeholder="#6366f1"
+          placeholderTextColor={tokens.foregroundSubtle}
+          style={[
+            styles.percentInput,
+            styles.hexInput,
+            {
+              color: tokens.foreground,
+              backgroundColor: tokens.surface2,
+              borderColor: valid ? tokens.border : tokens.danger,
+              fontFamily: tokens.fontUi,
+            },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * A choice row whose options carry a swatch; Custom reveals the colour picker.
+ * With `enabled` given the row carries a switch, and the colours show only
+ * while it is on.
+ */
+function ColourRow<T extends string>({
+  title,
+  description,
+  value,
+  options,
+  customHex,
+  enabled,
+  onEnabled,
+  onChange,
+  onCustomHex,
+  tokens,
+}: {
+  title: string;
+  description: string;
+  value: T | "custom";
+  options: ReadonlyArray<{
+    value: T;
+    label: string;
+    color: string | undefined;
+  }>;
+  customHex: string;
+  enabled?: boolean;
+  onEnabled?(next: boolean): void;
+  onChange(value: T | "custom"): void;
+  onCustomHex(hex: string): void;
+  tokens: ExtendedThemeTokens;
+}) {
+  const all: ReadonlyArray<{
+    value: T | "custom";
+    label: string;
+    color: string | undefined;
+  }> = [...options, { value: "custom", label: "Custom", color: customHex }];
+  return (
+    <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleText}>
+          <Text
+            style={[
+              styles.rowTitle,
+              { color: tokens.foreground, fontFamily: tokens.fontUi },
+            ]}
+          >
+            {title}
+          </Text>
+          <Text
+            style={[
+              styles.rowDescription,
+              { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
+            ]}
+          >
+            {description}
+          </Text>
+        </View>
+        {onEnabled ? (
+          <Toggle
+            value={enabled ?? true}
+            onChange={onEnabled}
+            label={title}
+            tokens={tokens}
+          />
+        ) : null}
+      </View>
+      {enabled === false ? null : (
+        <View style={styles.options}>
+          {all.map((option) => {
+            const selected = option.value === value;
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="button"
+                accessibilityLabel={`${title}: ${option.label}`}
+                accessibilityState={{ selected }}
+                onPress={() => onChange(option.value)}
+                style={[
+                  styles.option,
+                  styles.swatchOption,
+                  {
+                    backgroundColor: selected
+                      ? tokens.accentBg
+                      : tokens.surface2,
+                    borderColor: selected ? tokens.accent : tokens.borderSubtle,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.swatch,
+                    { backgroundColor: option.color ?? tokens.border },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.optionLabel,
+                    {
+                      color: selected ? tokens.accent : tokens.foregroundMuted,
+                      fontFamily: tokens.fontUi,
+                    },
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+      {enabled !== false && value === "custom" ? (
+        <ColourPicker hex={customHex} onChange={onCustomHex} tokens={tokens} />
+      ) : null}
+    </View>
+  );
+}
 
 const TRACK_WIDTH = 38;
 const TRACK_HEIGHT = 22;
@@ -86,7 +308,9 @@ function Toggle({
         style={[
           styles.knob,
           {
-            backgroundColor: value ? tokens.accentForeground : tokens.foregroundMuted,
+            backgroundColor: value
+              ? tokens.accentForeground
+              : tokens.foregroundMuted,
             transform: [
               {
                 translateX: position.interpolate({
@@ -117,9 +341,20 @@ function ToggleRow({
   tokens: ExtendedThemeTokens;
 }) {
   return (
-    <View style={[styles.row, styles.toggleRow, { borderTopColor: tokens.borderSubtle }]}>
+    <View
+      style={[
+        styles.row,
+        styles.toggleRow,
+        { borderTopColor: tokens.borderSubtle },
+      ]}
+    >
       <View style={styles.toggleText}>
-        <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+        <Text
+          style={[
+            styles.rowTitle,
+            { color: tokens.foreground, fontFamily: tokens.fontUi },
+          ]}
+        >
           {title}
         </Text>
         <Text
@@ -167,7 +402,10 @@ function OptionButton({
       <Text
         style={[
           styles.optionLabel,
-          { color: selected ? tokens.accent : tokens.foregroundMuted, fontFamily: tokens.fontUi },
+          {
+            color: selected ? tokens.accent : tokens.foregroundMuted,
+            fontFamily: tokens.fontUi,
+          },
         ]}
       >
         {label}
@@ -193,7 +431,12 @@ function ChoiceRow<T extends string>({
 }) {
   return (
     <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
-      <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+      <Text
+        style={[
+          styles.rowTitle,
+          { color: tokens.foreground, fontFamily: tokens.fontUi },
+        ]}
+      >
         {title}
       </Text>
       <Text
@@ -242,7 +485,12 @@ function MultiChoiceRow<T extends string>({
 }) {
   return (
     <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
-      <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+      <Text
+        style={[
+          styles.rowTitle,
+          { color: tokens.foreground, fontFamily: tokens.fontUi },
+        ]}
+      >
         {title}
       </Text>
       <Text
@@ -267,7 +515,9 @@ function MultiChoiceRow<T extends string>({
                   options
                     .map((entry) => entry.value)
                     .filter((entry) =>
-                      entry === option.value ? !selected : value.includes(entry),
+                      entry === option.value
+                        ? !selected
+                        : value.includes(entry),
                     ),
                 )
               }
@@ -337,7 +587,12 @@ function PercentageRow({
 
   return (
     <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
-      <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+      <Text
+        style={[
+          styles.rowTitle,
+          { color: tokens.foreground, fontFamily: tokens.fontUi },
+        ]}
+      >
         {title}
       </Text>
       <Text
@@ -372,13 +627,19 @@ function PercentageRow({
             },
           ]}
         />
-        <Text style={[styles.percentUnit, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+        <Text
+          style={[
+            styles.percentUnit,
+            { color: tokens.foreground, fontFamily: tokens.fontUi },
+          ]}
+        >
           %
         </Text>
       </View>
       {invalid ? (
         <Text style={[styles.rowDescription, { color: tokens.danger }]}>
-          Enter a value from {Math.round(min * 100)}% to {Math.round(max * 100)}%.
+          Enter a value from {Math.round(min * 100)}% to {Math.round(max * 100)}
+          %.
         </Text>
       ) : null}
     </View>
@@ -435,12 +696,21 @@ function LimitRow({
   const on = value > 0;
   return (
     <View
-      style={[styles.row, { borderTopColor: tokens.borderSubtle }, disabled && styles.dimmed]}
+      style={[
+        styles.row,
+        { borderTopColor: tokens.borderSubtle },
+        disabled && styles.dimmed,
+      ]}
       pointerEvents={disabled ? "none" : "auto"}
     >
       <View style={styles.toggleRow}>
         <View style={styles.toggleText}>
-          <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+          <Text
+            style={[
+              styles.rowTitle,
+              { color: tokens.foreground, fontFamily: tokens.fontUi },
+            ]}
+          >
             {title}
           </Text>
           <Text
@@ -485,7 +755,12 @@ function LimitRow({
               },
             ]}
           />
-          <Text style={[styles.percentUnit, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+          <Text
+            style={[
+              styles.percentUnit,
+              { color: tokens.foreground, fontFamily: tokens.fontUi },
+            ]}
+          >
             {unit}
           </Text>
         </View>
@@ -503,9 +778,13 @@ const SECTIONS_KEY = "paseo/refined-chat/settings-sections/v1";
 
 function readSectionState(): Record<string, boolean> {
   try {
-    const stored = (globalThis as { localStorage?: Storage }).localStorage?.getItem(SECTIONS_KEY);
+    const stored = (
+      globalThis as { localStorage?: Storage }
+    ).localStorage?.getItem(SECTIONS_KEY);
     const parsed: unknown = stored ? JSON.parse(stored) : {};
-    return parsed && typeof parsed === "object" ? (parsed as Record<string, boolean>) : {};
+    return parsed && typeof parsed === "object"
+      ? (parsed as Record<string, boolean>)
+      : {};
   } catch {
     return {};
   }
@@ -550,7 +829,10 @@ function Section({
     <View
       style={[
         styles.card,
-        { borderColor: tokens.borderSubtle, backgroundColor: tokens.surfaceGlass },
+        {
+          borderColor: tokens.borderSubtle,
+          backgroundColor: tokens.surfaceGlass,
+        },
       ]}
     >
       <Pressable
@@ -562,7 +844,10 @@ function Section({
       >
         <View style={styles.sectionText}>
           <Text
-            style={[styles.sectionTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}
+            style={[
+              styles.sectionTitle,
+              { color: tokens.foreground, fontFamily: tokens.fontUi },
+            ]}
           >
             {title}
           </Text>
@@ -575,7 +860,11 @@ function Section({
             {description}
           </Text>
         </View>
-        <Glyph name={open ? "ChevronUp" : "ChevronDown"} size={16} color={tokens.foregroundMuted} />
+        <Glyph
+          name={open ? "ChevronUp" : "ChevronDown"}
+          size={16}
+          color={tokens.foregroundMuted}
+        />
       </Pressable>
       {open ? children : null}
     </View>
@@ -585,27 +874,47 @@ function Section({
 /** Settings content mounted by Paseo under the selected host's Plugin settings. */
 export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
   const preferences = useEnhancerPreferences();
+  // Switching bold colour off stores "inherit"; switching on restores the last colour.
+  const accentChoice = useRef<Exclude<AccentChoice, "host">>("violet");
+  if (preferences.accent !== "host") accentChoice.current = preferences.accent;
+  const boldChoice = useRef<Exclude<BoldColorChoice, "inherit">>("sky");
+  if (preferences.boldColor !== "inherit")
+    boldChoice.current = preferences.boldColor;
   const tokens = useMemo(
     () => buildThemeTokens(theme.colors, preferences),
     [preferences, theme.colors],
   );
 
   return (
-    <View {...hostFontEscape} style={[styles.container, { backgroundColor: tokens.surface0 }]}>
+    <View
+      {...hostFontEscape}
+      style={[styles.container, { backgroundColor: tokens.surface0 }]}
+    >
       <View
         style={[
           styles.intro,
-          { borderColor: tokens.borderSubtle, backgroundColor: tokens.surface1 },
+          {
+            borderColor: tokens.borderSubtle,
+            backgroundColor: tokens.surface1,
+          },
         ]}
       >
-        <Text style={[styles.title, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+        <Text
+          style={[
+            styles.title,
+            { color: tokens.foreground, fontFamily: tokens.fontUi },
+          ]}
+        >
           Refined Chat presentation
         </Text>
         <Text
-          style={[styles.description, { color: tokens.foregroundMuted, fontFamily: tokens.fontUi }]}
+          style={[
+            styles.description,
+            { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
+          ]}
         >
-          Changes apply to every enhanced tool call, reasoning trace, checklist, and prompt in this
-          client.
+          Changes apply to every enhanced tool call, reasoning trace, checklist,
+          and prompt in this client.
         </Text>
       </View>
 
@@ -616,54 +925,45 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         defaultOpen={true}
         tokens={tokens}
       >
-        <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
-          <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
-            Accent colour
-          </Text>
-          <Text
-            style={[
-              styles.rowDescription,
-              { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
-            ]}
-          >
-            Use the current Paseo theme, or choose a presentation accent.
-          </Text>
-          <View style={styles.accentOptions}>
-            {ACCENT_OPTIONS.map((option) => {
-              const selected = preferences.accent === option.id;
-              const swatch = option.color ?? theme.colors.accent;
-              return (
-                <Pressable
-                  key={option.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Accent: ${option.label}`}
-                  accessibilityState={{ selected }}
-                  onPress={() => updateEnhancerPreferences({ accent: option.id })}
-                  style={[
-                    styles.accentOption,
-                    {
-                      borderColor: selected ? tokens.accent : tokens.borderSubtle,
-                      backgroundColor: selected ? tokens.accentBg : tokens.surface2,
-                    },
-                  ]}
-                >
-                  <View style={[styles.swatch, { backgroundColor: swatch }]} />
-                  <Text
-                    style={[
-                      styles.accentLabel,
-                      {
-                        color: selected ? tokens.accent : tokens.foregroundMuted,
-                        fontFamily: tokens.fontUi,
-                      },
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+        <ColourRow<Exclude<AccentChoice, "host" | "custom">>
+          title="Custom accent colour"
+          description="Replaces the accent of the current Paseo theme with a presentation accent. Off follows the theme."
+          enabled={preferences.accent !== "host"}
+          onEnabled={(on) =>
+            updateEnhancerPreferences({ accent: on ? accentChoice.current : "host" })
+          }
+          value={preferences.accent === "host" ? accentChoice.current : preferences.accent}
+          options={PALETTE_OPTIONS}
+          customHex={preferences.accentCustomColor}
+          onChange={(accent) => updateEnhancerPreferences({ accent })}
+          onCustomHex={(accentCustomColor) =>
+            updateEnhancerPreferences({ accent: "custom", accentCustomColor })
+          }
+          tokens={tokens}
+        />
+
+        <ColourRow<Exclude<BoldColorChoice, "custom">>
+          title="Colour bold text"
+          description="Gives bold text in a reply its own colour. Off keeps the surrounding text colour."
+          enabled={preferences.boldColor !== "inherit"}
+          onEnabled={(on) =>
+            updateEnhancerPreferences({
+              boldColor: on ? boldChoice.current : "inherit",
+            })
+          }
+          value={
+            preferences.boldColor === "inherit"
+              ? boldChoice.current
+              : preferences.boldColor
+          }
+          options={PALETTE_OPTIONS}
+          customHex={preferences.boldCustomColor}
+          onChange={(boldColor) => updateEnhancerPreferences({ boldColor })}
+          onCustomHex={(boldCustomColor) =>
+            updateEnhancerPreferences({ boldColor: "custom", boldCustomColor })
+          }
+          tokens={tokens}
+        />
 
         <ChoiceRow<UiFontPreference>
           title="Interface font"
@@ -693,7 +993,9 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           title="Frosted glass"
           description="Blur surfaces where the host supports it, or use solid surfaces instead."
           value={preferences.frostedGlass}
-          onChange={(frostedGlass) => updateEnhancerPreferences({ frostedGlass })}
+          onChange={(frostedGlass) =>
+            updateEnhancerPreferences({ frostedGlass })
+          }
           tokens={tokens}
         />
 
@@ -724,7 +1026,9 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           title="Reply line spacing"
           description="Height of each line in assistant replies, independent of the text size above. 100% is the default; 80% to 200%."
           value={preferences.replySpacing}
-          onChange={(replySpacing) => updateEnhancerPreferences({ replySpacing })}
+          onChange={(replySpacing) =>
+            updateEnhancerPreferences({ replySpacing })
+          }
           tokens={tokens}
           min={LINE_SPACING_MIN}
           max={LINE_SPACING_MAX}
@@ -757,7 +1061,9 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           title="Assistant markdown"
           description="Draws the reply with the plugin's own headings, lists and syntax-highlighted code blocks. The plugin cannot reach Paseo's markdown pipeline, so its version is a subset: turn this off for mermaid diagrams, images, and the host's file-path links."
           value={preferences.assistantMarkdown}
-          onChange={(assistantMarkdown) => updateEnhancerPreferences({ assistantMarkdown })}
+          onChange={(assistantMarkdown) =>
+            updateEnhancerPreferences({ assistantMarkdown })
+          }
           tokens={tokens}
         />
 
@@ -770,7 +1076,24 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
             { value: "compact", label: "Compact" },
             { value: "terminal", label: "Terminal" },
           ]}
-          onChange={(markdownVariant) => updateEnhancerPreferences({ markdownVariant })}
+          onChange={(markdownVariant) =>
+            updateEnhancerPreferences({ markdownVariant })
+          }
+          tokens={tokens}
+        />
+
+        <ColourRow<Exclude<MarkColorChoice, "custom">>
+          title="Highlight marks"
+          description="Draws ==text== in a reply as a highlighter mark. It is not standard markdown, and the assistant writes it only if your instructions ask for it. Off shows the equals signs as typed."
+          enabled={preferences.highlightMarks}
+          onEnabled={(highlightMarks) => updateEnhancerPreferences({ highlightMarks })}
+          value={preferences.markColor}
+          options={PALETTE_OPTIONS}
+          customHex={preferences.markCustomColor}
+          onChange={(markColor) => updateEnhancerPreferences({ markColor })}
+          onCustomHex={(markCustomColor) =>
+            updateEnhancerPreferences({ markColor: "custom", markCustomColor })
+          }
           tokens={tokens}
         />
 
@@ -778,7 +1101,9 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           title="Enhanced prompt bubble"
           description="Paseo removes pasted images before a plugin sees the message, so the enhanced bubble cannot show them. Turn this off for Paseo's own bubble with image previews. New prompts follow the change."
           value={preferences.enhancedUserBubble}
-          onChange={(enhancedUserBubble) => updateEnhancerPreferences({ enhancedUserBubble })}
+          onChange={(enhancedUserBubble) =>
+            updateEnhancerPreferences({ enhancedUserBubble })
+          }
           tokens={tokens}
         />
 
@@ -786,7 +1111,9 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           title="Selection actions"
           description="Highlighting text in a callout raises a small bar with Copy and Add to chat. Add to chat drops the highlight into the composer as a quote, or a fenced block when it came from code. Desktop and web only: iOS and Android use the platform's own selection menu."
           value={preferences.selectionActions}
-          onChange={(selectionActions) => updateEnhancerPreferences({ selectionActions })}
+          onChange={(selectionActions) =>
+            updateEnhancerPreferences({ selectionActions })
+          }
           tokens={tokens}
         />
       </Section>
@@ -801,8 +1128,13 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           title="Cards that start collapsed"
           description="Drawn folded from the start, even while still running, and open to read. Independent of folding on finish. A failed call stays folded too; its exit code and status show in the header."
           value={preferences.startCollapsedKinds}
-          options={COLLAPSE_KINDS.map((kind) => ({ value: kind, label: COLLAPSE_KIND_LABELS[kind] }))}
-          onChange={(startCollapsedKinds) => updateEnhancerPreferences({ startCollapsedKinds })}
+          options={COLLAPSE_KINDS.map((kind) => ({
+            value: kind,
+            label: COLLAPSE_KIND_LABELS[kind],
+          }))}
+          onChange={(startCollapsedKinds) =>
+            updateEnhancerPreferences({ startCollapsedKinds })
+          }
           tokens={tokens}
         />
 
@@ -810,10 +1142,15 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           title="Cards to collapse when finished"
           description="Cards that fold back up once they finish; none selected turns folding off. A failed call and an ask card stay open, and a card you opened or closed yourself keeps its state. Thinking stays open while it streams, then folds."
           value={preferences.autoCollapseKinds}
-          options={COLLAPSE_KINDS.map((kind) => ({ value: kind, label: COLLAPSE_KIND_LABELS[kind] }))}
+          options={COLLAPSE_KINDS.map((kind) => ({
+            value: kind,
+            label: COLLAPSE_KIND_LABELS[kind],
+          }))}
           lockedValues={preferences.startCollapsedKinds}
           lockedHint="Dimmed kinds already start collapsed, so there is nothing to fold."
-          onChange={(autoCollapseKinds) => updateEnhancerPreferences({ autoCollapseKinds })}
+          onChange={(autoCollapseKinds) =>
+            updateEnhancerPreferences({ autoCollapseKinds })
+          }
           tokens={tokens}
         />
 
@@ -822,10 +1159,12 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           description="Leaves a tool card open on finish while its output, code and diff total fewer lines than this. Off folds every selected card."
           value={preferences.autoCollapseMinLines}
           fallback={10}
-          disabled={
-            preferences.autoCollapseKinds.every((kind) => preferences.startCollapsedKinds.includes(kind))
+          disabled={preferences.autoCollapseKinds.every((kind) =>
+            preferences.startCollapsedKinds.includes(kind),
+          )}
+          onChange={(autoCollapseMinLines) =>
+            updateEnhancerPreferences({ autoCollapseMinLines })
           }
-          onChange={(autoCollapseMinLines) => updateEnhancerPreferences({ autoCollapseMinLines })}
           tokens={tokens}
         />
       </Section>
@@ -841,7 +1180,9 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           description="Text results (command output, errors, eval output, GitHub replies) past this many lines keep their start and their end and fold the middle. Off never folds."
           fallback={20}
           value={preferences.shellMaxLines}
-          onChange={(shellMaxLines) => updateEnhancerPreferences({ shellMaxLines })}
+          onChange={(shellMaxLines) =>
+            updateEnhancerPreferences({ shellMaxLines })
+          }
           tokens={tokens}
         />
 
@@ -850,7 +1191,9 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           description="File reads, writes, diffs, structured data (MCP, GitHub, eval code) and code blocks in replies past this many lines show the first lines and fold the rest. Off never folds."
           fallback={30}
           value={preferences.codeMaxLines}
-          onChange={(codeMaxLines) => updateEnhancerPreferences({ codeMaxLines })}
+          onChange={(codeMaxLines) =>
+            updateEnhancerPreferences({ codeMaxLines })
+          }
           tokens={tokens}
         />
 
@@ -859,7 +1202,9 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           description="A prompt you wrote past this many lines shows its first lines and folds the rest, in this plugin's prompt bubble only. A long paragraph with no line breaks counts by about 70 characters a line. Off never folds."
           fallback={15}
           value={preferences.promptMaxLines}
-          onChange={(promptMaxLines) => updateEnhancerPreferences({ promptMaxLines })}
+          onChange={(promptMaxLines) =>
+            updateEnhancerPreferences({ promptMaxLines })
+          }
           tokens={tokens}
         />
       </Section>
@@ -874,7 +1219,9 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           title="Load remote images automatically (at your own risk)"
           description="Off: an image an agent links over http(s) waits behind a Load button that names the server. On: it loads without asking. The agent writes the address, so a prompt injection can make your machine request a URL that carries data from the chat, and the server sees your IP address. Turn this on only if you accept that."
           value={preferences.loadRemoteImages}
-          onChange={(loadRemoteImages) => updateEnhancerPreferences({ loadRemoteImages })}
+          onChange={(loadRemoteImages) =>
+            updateEnhancerPreferences({ loadRemoteImages })
+          }
           tokens={tokens}
         />
 
@@ -882,7 +1229,9 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           title="Let Paseo fold tool calls and turns"
           description="Only acts when Paseo's Chat display is Collapse tool calls or Collapse turns. Paseo can fold only its own rows, so with this on, tool calls and reasoning (and, for Collapse turns, prompts and replies, which then ignore the reply size and spacing set here) are drawn by Paseo instead of this plugin. Off keeps this plugin's cards in every mode, and Paseo does not fold them. Rows are drawn once when they load, so after changing this or Paseo's Chat display, reload the plugin or restart the app."
           value={preferences.yieldToHostFolding}
-          onChange={(yieldToHostFolding) => updateEnhancerPreferences({ yieldToHostFolding })}
+          onChange={(yieldToHostFolding) =>
+            updateEnhancerPreferences({ yieldToHostFolding })
+          }
           tokens={tokens}
         />
       </Section>
@@ -893,7 +1242,10 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         style={[styles.reset, { borderColor: tokens.borderSubtle }]}
       >
         <Text
-          style={[styles.resetText, { color: tokens.foregroundMuted, fontFamily: tokens.fontUi }]}
+          style={[
+            styles.resetText,
+            { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
+          ]}
         >
           Reset defaults
         </Text>
@@ -926,7 +1278,12 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: "700" },
   description: { fontSize: 13, lineHeight: 18 },
   card: { borderWidth: 1, borderRadius: radius.card, overflow: "hidden" },
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+  },
   sectionText: { flex: 1, minWidth: 0, gap: 3 },
   sectionTitle: { fontSize: 15, fontWeight: "700" },
   row: { padding: 14, gap: 8, borderTopWidth: 1 },
@@ -944,20 +1301,25 @@ const styles = StyleSheet.create({
   },
   percentUnit: { fontSize: 14, fontWeight: "600" },
   options: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  option: { borderWidth: 1, borderRadius: radius.block, paddingHorizontal: 10, paddingVertical: 7 },
-  optionLabel: { fontSize: 12, fontWeight: "600" },
-  accentOptions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  accentOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+  option: {
     borderWidth: 1,
     borderRadius: radius.block,
-    paddingHorizontal: 9,
+    paddingHorizontal: 10,
     paddingVertical: 7,
   },
+  optionLabel: { fontSize: 12, fontWeight: "600" },
   swatch: { width: 12, height: 12, borderRadius: radius.chip },
-  accentLabel: { fontSize: 12, fontWeight: "600" },
+  swatchOption: { flexDirection: "row", alignItems: "center", gap: 6 },
+  picker: { gap: 10 },
+  hueStrip: {
+    flexDirection: "row",
+    height: 22,
+    borderRadius: radius.chip,
+    overflow: "hidden",
+  },
+  hueChip: { flex: 1 },
+  pickerSwatch: { width: 18, height: 18 },
+  hexInput: { minWidth: 110, textAlign: "left" },
   reset: {
     alignSelf: "flex-start",
     borderWidth: 1,
