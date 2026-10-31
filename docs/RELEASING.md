@@ -105,5 +105,9 @@ automatically create a published listing.
 Once approved, users can install using:
 
 ```powershell
-paseo plugin add GenoDevelop/paseo-refined-chat
+paseo plugin add genodevelop/refined-chat
 ```
+
+The catalog pins the reviewed commit, so a later release does not reach catalog users
+until it is submitted again through the same form. Approved: v0.4.0, listed as
+`genodevelop/refined-chat` (submission #1645, registry PR #1646).

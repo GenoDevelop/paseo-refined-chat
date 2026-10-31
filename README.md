@@ -24,20 +24,27 @@ intercept Paseo timeline items, so **disable Beautiful Chat before enabling Refi
 
 ## Install
 
-Install from the public GitHub repository, which follows `main`:
+From the Paseo catalog:
+
+```bash
+paseo plugin add genodevelop/refined-chat
+```
+
+The catalog installs a revision a reviewer has checked, and a new version reaches it
+only when it is submitted again. To follow `main` instead, install from the
+public GitHub repository:
 
 ```bash
 paseo plugin add git:GenoDevelop/paseo-refined-chat
 ```
 
-To stay on a published release, pin its tag:
+Or pin a published release by its tag:
 
 ```bash
 paseo plugin add git:GenoDevelop/paseo-refined-chat --ref v0.4.0
 ```
 
-Once the plugin is approved in the Paseo catalog, `paseo plugin add GenoDevelop/paseo-refined-chat` works
-too. Requires **Paseo 0.11.0 or later**. Everything below is configured in
+Requires **Paseo 0.11.0 or later**. Everything below is configured in
 **Settings → Plugins → Refined Chat**, and each setting is stored on the client you change it on.
 
 ---
@@ -225,6 +232,21 @@ more), and a file then opens in the side panel like any other.
 A directory path opens that directory. A path the daemon cannot stat does nothing. The link cannot open
 Paseo's own file editor, which plugins cannot target: see the first
 [limitation](#plugin-sdk-limitations-found-while-building-this). The side panel is the plugin's own viewer.
+
+## What the plugin reads
+
+The plugin sends no telemetry and collects no credentials. Four things run on the daemon, each
+when a card needs it:
+
+| Purpose | What it reads |
+| --- | --- |
+| Image previews (`file.image`) | A local image file an agent names, up to 3 MB, and only a recognised image type. The bytes go to the connected client. |
+| Edit line numbers | The file an edit refers to, up to 5 MB, to find where the text sits. Only a line number comes back. |
+| Syntax highlighting | The code a card shows, parsed by libraries installed with the plugin. |
+| Showing a file (`file.reveal`) | Nothing: it asks the platform file manager to select the path, without a shell command. |
+
+These paths are not limited to the agent's working directory. A remote image in a reply is not
+fetched until you press **Load**, unless you turn on automatic loading.
 
 ## Finding text
 
