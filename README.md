@@ -46,7 +46,7 @@ paseo plugin add git:GenoDevelop/paseo-refined-chat
 Or pin a published release by its tag:
 
 ```bash
-paseo plugin add git:GenoDevelop/paseo-refined-chat --ref v0.4.0
+paseo plugin add git:GenoDevelop/paseo-refined-chat --ref v0.5.0
 ```
 
 Requires **Paseo 0.11.0 or later**. Everything below is configured in
