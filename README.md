@@ -203,6 +203,21 @@ the platform shell to show it:
 A directory path opens that directory. A path the daemon cannot stat does nothing. The link cannot open
 Paseo's own file editor: see the first [limitation](#plugin-sdk-limitations-found-while-building-this).
 
+## What the plugin reads
+
+The plugin sends no telemetry and collects no credentials. Four things run on the daemon, each
+when a card needs it:
+
+| Purpose | What it reads |
+| --- | --- |
+| Image previews (`file.image`) | A local image file an agent names, up to 3 MB, and only a recognised image type. The bytes go to the connected client. |
+| Edit line numbers | The file an edit refers to, up to 5 MB, to find where the text sits. Only a line number comes back. |
+| Syntax highlighting | The code a card shows, parsed by libraries installed with the plugin. |
+| Showing a file (`file.reveal`) | Nothing: it asks the platform file manager to select the path, without a shell command. |
+
+These paths are not limited to the agent's working directory. A remote image in a reply is not
+fetched until you press **Load**, unless you turn on automatic loading.
+
 ## Finding text
 
 Paseo's own chat find (Ctrl/Cmd+F) cannot reach a prompt or reply this plugin draws (see
