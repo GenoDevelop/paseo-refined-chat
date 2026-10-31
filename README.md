@@ -208,7 +208,7 @@ press replaces the file in the open panel. The panel reads the
 file through a second daemon-side RPC (`file.read`), which is stricter than `file.reveal` because it
 returns contents: the file must be inside the agent's working directory once symbolic links are
 resolved, at most 1 MB, and text. Any other file, and every folder, goes to the file manager instead (the
-panel says why and offers a button). A path with a line (`app.ts:55`) marks that line and scrolls to it; for a range the first line is marked. In a rendered Markdown file the block holding the line is tinted. A picture opens drawn, with a Full screen button, through the same
+panel says why and offers a button). A path with a line (`app.ts:55`) marks that line and scrolls to it; for a range the first line is marked. In a rendered Markdown file the block holding the line is tinted, and a link to another file beside it (`docs/TESTING.md`, `../README.md#L12`) shows that file in the panel; Back returns. A link to a heading (`#usage`, `docs/X.md#usage`) scrolls to it and tints it. The same rules apply to the linked file as to a path pressed in a reply. A picture opens drawn, with a Full screen button, through the same
 image RPC that draws pictures on tool cards: it reads only recognised image types of up to 3 MB and, unlike
 `file.read`, is not limited to the working directory. The setting "File paths in replies" switches the whole thing back to
 the file manager. The Advanced setting "Preview files outside the project" lifts the working-directory rule

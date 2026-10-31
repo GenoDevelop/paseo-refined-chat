@@ -8,7 +8,8 @@ import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
 import { openLink } from "../open-link";
 import { pathKind, type PathKind } from "./file-path";
-import { linkProps, pathLinkProps } from "./link-style";
+import { linkProps, pathLinkProps, plainLinkProps } from "./link-style";
+import { headingSlugs, parseFileLink } from "../../file-link";
 import { parseMarkdown, type MdAlign, type MdBlock, type MdInline, type MdListItem } from "./parse";
 import { ReplyImage, THUMB_HEIGHT, THUMB_WIDTH } from "../reply-image";
 import { useImageFile } from "../../image-file";
@@ -35,6 +36,8 @@ export interface MarkdownViewProps {
    * tinted, and `onLinePosition` gets its offset from the top of the text.
    */
   line?: number;
+  /** A heading's slug to mark instead, as `#usage` in a link names it. */
+  anchor?: string;
   onLinePosition?: (y: number) => void;
 }
 
@@ -254,15 +257,30 @@ export function MarkdownView({
   variant,
   marks = false,
   line,
+  anchor,
   onLinePosition,
 }: MarkdownViewProps) {
-  const { blocks, starts } = useMemo(() => {
+  const { blocks, starts, slugs } = useMemo(() => {
     const opened: number[] = [];
-    return { blocks: parseMarkdown(text, opened), starts: opened };
+    const parsed = parseMarkdown(text, opened);
+    // One slug per block; only a heading has one.
+    const titles = parsed.flatMap((block) =>
+      block.kind === "heading" ? [inlineText(block.spans)] : [],
+    );
+    const named = headingSlugs(titles);
+    let next = 0;
+    return {
+      blocks: parsed,
+      starts: opened,
+      slugs: parsed.map((block) => (block.kind === "heading" ? named[next++]! : null)),
+    };
   }, [text]);
-  // The last block that opened on or before the line holds it.
+  // An anchor names a heading; otherwise the last block that opened on or
+  // before the line holds it.
   let marked = -1;
-  if (line !== undefined) {
+  if (anchor !== undefined) {
+    marked = slugs.indexOf(anchor);
+  } else if (line !== undefined) {
     for (let at = 0; at < starts.length && starts[at]! <= line - 1; at++) marked = at;
   }
   const metrics = useMemo(
@@ -840,28 +858,53 @@ function renderInline(
           </Text>
         );
       case "link":
-        // `onPress` on a Text, not a Pressable wrapper: a link sits mid
-        // sentence, and a View there would break the line box and drop the
-        // text out of the paragraph's selection range.
-        return (
-          <Text
-            key={key}
-            selectable
-            accessibilityRole="link"
-            // No `href`: React Native Web would render a real anchor and the
-            // click would navigate the app window itself. The press handler
-            // routes through the host's opener instead.
-            onPress={() => openLink(span.href)}
-            style={styles.link}
-            {...(Platform.OS === "web"
-              ? linkProps(span.href, inlineText(span.spans))
-              : null)}
-          >
-            {renderInline(span.spans, styles, key)}
-          </Text>
-        );
+        return <MarkdownLink key={key} href={span.href} spans={span.spans} styles={styles} />;
     }
   });
+}
+
+/**
+ * Set where the text is a file on disk (the side panel): a link to another file
+ * beside it is handed here, with the path as the link wrote it, and the panel
+ * shows that file. Absent in a reply, where such a link does nothing.
+ */
+export const FileLinkContext = createContext<((href: string) => void) | null>(null);
+
+function MarkdownLink({
+  href,
+  spans,
+  styles,
+}: {
+  href: string;
+  spans: MdInline[];
+  styles: MarkdownStyles;
+}) {
+  const openFile = useContext(FileLinkContext);
+  const link = openFile ? parseFileLink(href) : null;
+  // `onPress` on a Text, not a Pressable wrapper: a link sits mid
+  // sentence, and a View there would break the line box and drop the
+  // text out of the paragraph's selection range.
+  return (
+    <Text
+      selectable
+      accessibilityRole="link"
+      // No `href`: React Native Web would render a real anchor and the
+      // click would navigate the app window itself. The press handler
+      // routes through the host's opener instead.
+      onPress={() => (link !== null ? openFile?.(href) : openLink(href))}
+      style={styles.link}
+      {...(link !== null
+        ? // A link to a place in the same file has no file to name, so no icon.
+          link.path === null
+          ? plainLinkProps()
+          : pathLinkProps("file", true)
+        : Platform.OS === "web"
+          ? linkProps(href, inlineText(spans))
+          : null)}
+    >
+      {renderInline(spans, styles, "l")}
+    </Text>
+  );
 }
 
 /**
