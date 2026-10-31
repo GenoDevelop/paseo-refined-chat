@@ -639,7 +639,7 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
 
         <MultiChoiceRow<CollapseKind>
           title="Cards that start collapsed"
-          description="Drawn folded from the start, even while still running, and open to read. Independent of folding on finish. A failed call opens anyway."
+          description="Drawn folded from the start, even while still running, and open to read. Independent of folding on finish. A failed call stays folded too; its exit code and status show in the header."
           value={preferences.startCollapsedKinds}
           options={COLLAPSE_KINDS.map((kind) => ({ value: kind, label: COLLAPSE_KIND_LABELS[kind] }))}
           onChange={(startCollapsedKinds) => updateEnhancerPreferences({ startCollapsedKinds })}

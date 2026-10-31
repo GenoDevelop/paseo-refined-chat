@@ -144,10 +144,7 @@ export function ToolCallout({
     const wasRunning = previousStatus.current === "running";
     previousStatus.current = data.status;
     if (touched) return;
-    // A card that started folded because open-while-running is off still opens
-    // for a failure, so the error is in view.
-    if (data.status === "failed") setExpanded(true);
-    else if (autoCollapse && wasRunning && shouldAutoCollapse(data, autoCollapse)) {
+    if (autoCollapse && wasRunning && shouldAutoCollapse(data, autoCollapse)) {
       setExpanded(false);
     }
   }, [autoCollapse, touched, data]);

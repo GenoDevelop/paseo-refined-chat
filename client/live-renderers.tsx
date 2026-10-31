@@ -647,12 +647,14 @@ export function LiveToolCallRenderer({
     });
   }, [hubData, agentId]);
 
-  // Collapse completed tools by default; expand active or failed tools. A kind the reader chose to start folded stays folded while it runs, and a
-  // failure opens it regardless. An ask card holds a question, so it never starts folded.
+  // Collapse completed tools by default; expand active or failed tools. A kind
+  // the reader chose to start folded stays folded while it runs and when it
+  // fails: they asked for it closed. An ask card holds a question, so it never
+  // starts folded.
   const startsFolded =
     calloutData.tool !== "ask" &&
     preferences.startCollapsedKinds.includes(collapseKind(calloutData.tool));
-  const isExpanded = data.status === "failed" || (data.status === "running" && !startsFolded);
+  const isExpanded = (data.status === "failed" || data.status === "running") && !startsFolded;
 
   // The daemon side owns the shell, so revealing a file is one RPC. A path the
   // daemon cannot stat answers with an error the press simply ignores.
