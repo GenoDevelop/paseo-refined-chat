@@ -142,7 +142,7 @@ export function linkKind(href: string): LinkKind {
  * read as a file, not as a claim about a site, so it is not compared with the
  * target.
  */
-const FILE_EXTENSIONS = new Set([
+export const FILE_EXTENSIONS = new Set([
   "ts", "tsx", "js", "jsx", "mjs", "cjs", "json", "md", "mdx", "py", "rs", "sh", "yml", "yaml",
   "toml", "txt", "css", "scss", "html", "xml", "lock", "log", "cs", "rb", "php", "java", "kt",
   "swift", "c", "h", "cpp", "sql", "env", "cfg", "ini",

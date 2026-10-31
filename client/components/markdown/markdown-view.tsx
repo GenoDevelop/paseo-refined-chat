@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from "react-native";
 import type { TextStyle, ViewStyle } from "react-native";
 import { Glyph } from "../glyph";
@@ -7,7 +7,8 @@ import { selectableSurface, unselectable } from "../selection";
 import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
 import { openLink } from "../open-link";
-import { linkProps } from "./link-style";
+import { isFilePath } from "./file-path";
+import { linkProps, plainLinkProps } from "./link-style";
 import { parseMarkdown, type MdAlign, type MdBlock, type MdInline, type MdListItem } from "./parse";
 import { ReplyImage, THUMB_HEIGHT, THUMB_WIDTH } from "../reply-image";
 import { useImageFile } from "../../image-file";
@@ -718,6 +719,39 @@ function inlineText(spans: MdInline[]): string {
     .join("");
 }
 
+/**
+ * Shows a path in the file manager. Absent where the host cannot reveal one,
+ * which leaves every inline code span as plain text.
+ */
+export const RevealPathContext = createContext<((path: string) => void) | null>(null);
+
+/**
+ * Inline code. When it reads as a file path and a reveal is available, pressing
+ * it shows the file; the chip looks the same and gains the link hover. Only a
+ * reveal: nothing is opened or run, and a path that does not exist does nothing.
+ */
+function CodeSpan({ text, style }: { text: string; style: TextStyle }) {
+  const reveal = useContext(RevealPathContext);
+  if (!reveal || !isFilePath(text)) {
+    return (
+      <Text selectable style={style}>
+        {text}
+      </Text>
+    );
+  }
+  return (
+    <Text
+      selectable
+      accessibilityRole="link"
+      onPress={() => reveal(text)}
+      style={style}
+      {...plainLinkProps()}
+    >
+      {text}
+    </Text>
+  );
+}
+
 function renderInline(
   spans: MdInline[],
   styles: MarkdownStyles,
@@ -729,11 +763,7 @@ function renderInline(
       case "text":
         return span.text;
       case "codeSpan":
-        return (
-          <Text key={key} selectable style={styles.codeSpan}>
-            {span.text}
-          </Text>
-        );
+        return <CodeSpan key={key} text={span.text} style={styles.codeSpan} />;
       case "strong":
         return (
           <Text key={key} selectable style={styles.strong}>

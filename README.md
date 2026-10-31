@@ -194,6 +194,12 @@ the platform shell to show it:
 | macOS | `open -R <file>` selects the file in Finder. |
 | Other | `xdg-open <directory>` opens the containing directory. |
 
+A file path in inline code in a reply works the same way: `src/app.ts`, `C:\work\app.ts:55` or `./notes.md`
+becomes a link (a `:55` line selector is accepted and ignored). A bare file name needs a common source or
+text extension, so `v1.beta` stays text. The path comes from the agent, so network paths (`\\host\share`,
+`//host/share`) are never linked and the daemon refuses them. The link only shows the file; it never opens
+or runs it.
+
 A directory path opens that directory. A path the daemon cannot stat does nothing. The link cannot open
 Paseo's own file editor: see the first [limitation](#plugin-sdk-limitations-found-while-building-this).
 

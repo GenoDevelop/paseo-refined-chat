@@ -445,6 +445,11 @@ export default function contribute(server: PluginServerContext) {
     if (!requested) return { revealed: null, error: "No path" };
 
     const target = isAbsolute(requested) ? requested : resolve(input.cwd, requested);
+    // A path in a reply is the agent's text. On Windows a network path makes
+    // `stat` contact that host, which can hand it the user's credentials.
+    if (target.startsWith("\\\\") || target.startsWith("//")) {
+      return { revealed: null, error: "Network paths are not revealed" };
+    }
     try {
       const entry = await stat(target);
       revealWithShell(target, entry.isDirectory());
