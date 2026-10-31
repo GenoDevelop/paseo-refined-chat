@@ -9,6 +9,10 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 - "Reply line spacing": a percentage (80% to 200%, default 100%) that sets the height of each line in assistant replies, apart from the text size. Body text, lists, tables and headings follow it; the gaps between blocks, tool cards and code do not.
 - "Let Paseo fold tool calls and turns" (off by default). Paseo's Chat display can fold tool calls into one row, or a whole turn into its reply, but only for rows it draws itself, and this plugin replaces them with its own. With the setting on and Chat display set to Collapse tool calls, tool calls and reasoning are left to Paseo; with Collapse turns, prompts and replies are too. Rows are drawn once when they load, so after changing either setting reload the plugin or restart the app.
 - Links in replies show where they go and look like links in Codex: an icon before the text (GitHub, mail or web), a dashed underline on hover, and the full address in a bubble above the link on hover. When the text reads as an address that differs from the real target, the icon turns into an amber warning and the bubble names both. File paths and links on tool cards get the same hover underline. Web and desktop only; a touch screen keeps its permanent underline.
+- A command card (shell, git) says what the command did on the right of its header, folded or open: what git changed (`+53 −0`), how many lines the command printed (`8 lines`), or `no output`. A failed call keeps its exit code and a call that wrote to stderr shows none.
+
+### Changed
+- The size of an edit, write or read (`+X −Y`, `N lines`, `lines A–B`) moved from beside the title to the right of the header, with the new command summary, so every card keeps its measurements in one place and a long file path no longer pushes them out.
 
 ## [0.3.0] - 2026-10-31
 

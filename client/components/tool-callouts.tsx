@@ -29,6 +29,13 @@ function countLines(text: string): number {
   return text.replace(/\r?\n$/, "").split(/\r?\n/).length;
 }
 
+/** Claude reports a silent command with this sentence instead of an empty result. */
+const SILENT_RESULT = /^\((?:bash )?completed with no output\)$/i;
+
+/** Git's closing line after a commit, merge, or `--stat`. */
+const GIT_SHORTSTAT =
+  /\d+ files? changed(?:, (\d+) insertions?\(\+\))?(?:, (\d+) deletions?\(-\))?/;
+
 function getToolIconName(tool: string): string {
   if (tool === "git") return "Git";
   if (tool === "paseo") return "Paseo";
@@ -162,6 +169,24 @@ export function ToolCallout({
     }
     return countLines(data.code);
   }, [data.tool, data.code, data.filePath, isRunning]);
+
+  // A folded command card says what the command did: what git changed, or how
+  // much it printed. A failed call carries its exit code instead, and a call
+  // that wrote to stderr only has no count worth showing.
+  const shellSummary = useMemo(() => {
+    if (!isSuccess || (data.tool !== "bash" && data.tool !== "shell" && data.tool !== "git")) {
+      return undefined;
+    }
+    if (data.exitCode !== undefined && data.exitCode !== 0) return undefined;
+    if (data.shell?.stderr) return undefined;
+    const output = data.shell?.stdout ?? data.output;
+    const stat = output?.match(GIT_SHORTSTAT);
+    if (stat) return `+${stat[1] ?? 0} −${stat[2] ?? 0}`;
+    const text = output?.trim() ?? "";
+    if (!text || SILENT_RESULT.test(text)) return "no output";
+    const count = countLines(text);
+    return `${count} ${count === 1 ? "line" : "lines"}`;
+  }, [isSuccess, data.tool, data.exitCode, data.shell?.stderr, data.shell?.stdout, data.output]);
 
   const statusColor = isSuccess ? tokens.success : isRunning ? tokens.accent : tokens.danger;
 
@@ -578,6 +603,9 @@ export function ToolCallout({
           <Text selectable style={styles.titleText} numberOfLines={1} ellipsizeMode="tail">
             {data.title}
           </Text>
+        </View>
+
+        <View style={styles.headerRight}>
           {diffStat && (diffStat.added > 0 || diffStat.removed > 0) ? (
             <View style={styles.diffStat}>
               {diffStat.added > 0 ? (
@@ -601,9 +629,12 @@ export function ToolCallout({
                 : `${readLines} ${readLines === 1 ? "line" : "lines"}`}
             </Text>
           ) : null}
-        </View>
+          {shellSummary ? (
+            <Text selectable style={styles.durationBadge}>
+              {shellSummary}
+            </Text>
+          ) : null}
 
-        <View style={styles.headerRight}>
           {data.durationMs ? (
             <Text selectable style={styles.durationBadge}>
               {data.durationMs}ms
