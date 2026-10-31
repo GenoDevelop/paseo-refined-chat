@@ -217,7 +217,10 @@ the agent writes the path, so a prompt injection can link a private file such as
 
 A folder in inline code links too, with a folder icon and the bubble "Open folder", when it cannot be
 mistaken for prose: it ends with a separator (`src/`, `.\build\`) or starts from a drive or `~` (`C:\work\app`,
-`~/app`). `and/or`, `/api/users` and `/compact` stay text.
+`~/app`). `and/or`, `/api/users` and `/compact` stay text. A path from a root without an extension or a
+trailing separator (`~/.gitconfig`, `C:\work\Makefile`) shows the folder icon, because it cannot be told from a
+folder by its text; pressing it asks the daemon whether it is a file (`file.kind`, a `stat` and nothing
+more), and a file then opens in the side panel like any other.
 
 A directory path opens that directory. A path the daemon cannot stat does nothing. The link cannot open
 Paseo's own file editor, which plugins cannot target: see the first

@@ -70,6 +70,24 @@ export const locateTextRpc = defineRpc({
   }),
 });
 
+/**
+ * Whether a path names a file or a folder. A path such as `~/.gitconfig` or
+ * `C:\work\Makefile` reads the same as a folder, so the client asks before it
+ * decides between the side panel and the file manager. It answers from `stat`
+ * alone and returns no contents.
+ */
+export const fileKindRpc = defineRpc({
+  // The host accepts lower-case, dotted RPC names only.
+  name: "file.kind",
+  input: z.object({
+    cwd: z.string(),
+    path: z.string(),
+  }),
+  output: z.object({
+    kind: z.enum(["file", "folder", "missing"]),
+  }),
+});
+
 /** The largest file the side panel reads: a text file this big already fills a screen many times. */
 export const MAX_PREVIEW_BYTES = 1024 * 1024;
 

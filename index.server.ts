@@ -5,6 +5,7 @@ import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import {
   MAX_PREVIEW_BYTES,
+  fileKindRpc,
   locateTextRpc,
   readFileRpc,
   revealPathRpc,
@@ -477,6 +478,22 @@ export default function contribute(server: PluginServerContext) {
         revealed: null,
         error: error instanceof Error ? error.message : String(error),
       };
+    }
+  });
+
+  server.handle(fileKindRpc, async (input) => {
+    const requested = stripSelector(input.path);
+    if (!requested) return { kind: "missing" } as const;
+
+    // As in `file.reveal`: a network path is refused before any lookup.
+    const target = resolveRequested(input.cwd, requested);
+    if (isNetworkPath(target)) return { kind: "missing" } as const;
+    try {
+      const entry = await stat(target);
+      if (entry.isDirectory()) return { kind: "folder" } as const;
+      return { kind: entry.isFile() ? "file" : "missing" } as const;
+    } catch {
+      return { kind: "missing" } as const;
     }
   });
 
