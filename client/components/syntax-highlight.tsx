@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
+import { LINK_UNDERLINE, plainLinkProps } from "./markdown/link-style";
 import { Glyph } from "./glyph";
 import { frosted } from "./frosted";
 import { surfaceProps } from "./view-props";
@@ -591,7 +592,7 @@ export function SyntaxHighlightBlock({
         },
         filenameLink: {
           color: tokens.accent,
-          textDecorationLine: "underline",
+          textDecorationLine: LINK_UNDERLINE,
           ...unselectable,
         },
         langBadge: {
@@ -671,7 +672,9 @@ export function SyntaxHighlightBlock({
                   accessibilityLabel={`Show ${filename} in the file manager`}
                   style={styles.filenameButton}
                 >
-                  <Text style={[styles.filename, styles.filenameLink]}>{filename}</Text>
+                  <Text style={[styles.filename, styles.filenameLink]} {...plainLinkProps()}>
+                    {filename}
+                  </Text>
                 </Pressable>
               ) : (
                 <Text selectable style={styles.filename}>

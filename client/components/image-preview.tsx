@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, Pressable, Image, Platform, StyleSheet } from "react-native";
 import type { ViewStyle } from "react-native";
+import { LINK_UNDERLINE, plainLinkProps } from "./markdown/link-style";
 import { ImageViewer } from "./image-viewer";
 import { Glyph } from "./glyph";
 import { radius } from "./theme-tokens";
@@ -79,7 +80,7 @@ export function ImagePreview({ path, file, tokens, onReveal, caption }: ImagePre
           fontFamily: tokens.fontMono,
           fontSize: tokens.fs(11.5),
           color: tokens.accent,
-          textDecorationLine: "underline",
+          textDecorationLine: LINK_UNDERLINE,
           flexShrink: 1,
           minWidth: 0,
         },
@@ -167,7 +168,7 @@ export function ImagePreview({ path, file, tokens, onReveal, caption }: ImagePre
             accessibilityLabel={`Show ${path} in the file manager`}
             onPress={onReveal}
           >
-            <Text style={styles.path} numberOfLines={1}>
+            <Text style={styles.path} numberOfLines={1} {...plainLinkProps()}>
               {path}
             </Text>
           </Pressable>

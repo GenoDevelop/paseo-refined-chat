@@ -7,6 +7,7 @@ import { selectableSurface, unselectable } from "../selection";
 import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
 import { openLink } from "../open-link";
+import { linkProps } from "./link-style";
 import { parseMarkdown, type MdAlign, type MdBlock, type MdInline, type MdListItem } from "./parse";
 import { ReplyImage, THUMB_HEIGHT, THUMB_WIDTH } from "../reply-image";
 import { useImageFile } from "../../image-file";
@@ -699,6 +700,13 @@ function renderTable(block: MdTableBlock, key: string, context: RenderContext): 
   );
 }
 
+/** The plain words of a run of inline spans, which is what a link's label reads as. */
+function inlineText(spans: MdInline[]): string {
+  return spans
+    .map((span) => ("text" in span ? span.text : inlineText(span.spans)))
+    .join("");
+}
+
 function renderInline(
   spans: MdInline[],
   styles: MarkdownStyles,
@@ -747,6 +755,9 @@ function renderInline(
             // routes through the host's opener instead.
             onPress={() => openLink(span.href)}
             style={styles.link}
+            {...(Platform.OS === "web"
+              ? linkProps(span.href, inlineText(span.spans))
+              : null)}
           >
             {renderInline(span.spans, styles, key)}
           </Text>
@@ -1030,7 +1041,9 @@ function buildStyles(
     },
     link: {
       color: tokens.accent,
-      textDecorationLine: "underline",
+      // On web the stylesheet underlines on hover and shows the address; a
+      // touch screen has no hover, so it keeps the permanent underline.
+      textDecorationLine: Platform.OS === "web" ? "none" : "underline",
     },
   });
 }
