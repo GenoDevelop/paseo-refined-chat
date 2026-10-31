@@ -43,7 +43,7 @@ import type {
   PaseoToolData,
   GitHubToolData,
 } from "../shared/contracts";
-import { revealPathRpc } from "../shared/file-rpc";
+import { fileKindRpc, revealPathRpc } from "../shared/file-rpc";
 import { buildGitHubData } from "./github-request";
 import { useImageFile } from "./image-file";
 import { useEditAnchor } from "./edit-anchor";
@@ -864,22 +864,27 @@ export function LiveAssistantRenderer({
   const cwd = useAgent(agentId, (agent) => agent.cwd);
   const workspaceId = useAgent(agentId, (agent) => agent.workspaceId);
   const revealPath = useRpc(revealPathRpc);
+  const fileKind = useRpc(fileKindRpc);
   const handleRevealPath = useCallback(
     (path: string, kind: PathKind) => {
+      const reveal = () => void revealPath({ cwd: cwd ?? "", path }).catch(() => {});
+      const canPreview = preferences.pathOpens === "panel" && workspaceId && cwd;
+      const show = () => (canPreview && openFilePreview(workspaceId, cwd, path)) || reveal();
       // A folder has nothing to read, and the panel itself says why it cannot
       // show a file, so only a file goes there.
-      if (
-        kind === "file" &&
-        preferences.pathOpens === "panel" &&
-        workspaceId &&
-        cwd &&
-        openFilePreview(workspaceId, cwd, path)
-      ) {
+      if (kind === "file") return show();
+      // `~/.gitconfig` or `C:\work\Makefile` reads like a folder: no trailing
+      // separator and no extension to tell. Only the disk knows, so ask first.
+      if (canPreview && !/[\\/]$/.test(path.trim())) {
+        fileKind({ cwd, path }).then(
+          (answer) => (answer.kind === "file" ? show() : reveal()),
+          reveal,
+        );
         return;
       }
-      void revealPath({ cwd: cwd ?? "", path }).catch(() => {});
+      reveal();
     },
-    [cwd, preferences.pathOpens, revealPath, workspaceId],
+    [cwd, fileKind, preferences.pathOpens, revealPath, workspaceId],
   );
 
   return (
