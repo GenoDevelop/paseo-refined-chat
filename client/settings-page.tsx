@@ -27,6 +27,7 @@ import {
   LINE_SPACING_MIN,
   LINE_SPACING_MAX,
   resetEnhancerPreferences,
+  sanitizeFontFamily,
   updateEnhancerPreferences,
   useEnhancerPreferences,
   type AccentChoice,
@@ -34,6 +35,7 @@ import {
   type MarkColorChoice,
   type PaletteColor,
   type CodeFontPreference,
+  type MonoFontPreference,
   type UiFontPreference,
 } from "./preferences";
 
@@ -411,6 +413,61 @@ function OptionButton({
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+/** A free-text family name, applied on blur or Enter, shown as typed. */
+function FontFamilyRow({
+  value,
+  onChange,
+  tokens,
+}: {
+  value: string;
+  onChange(value: string): void;
+  tokens: ExtendedThemeTokens;
+}) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  const commit = () => {
+    const clean = sanitizeFontFamily(draft);
+    setDraft(clean);
+    if (clean !== value) onChange(clean);
+  };
+  return (
+    <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
+      <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+        Custom code font
+      </Text>
+      <Text
+        style={[styles.rowDescription, { color: tokens.foregroundMuted, fontFamily: tokens.fontUi }]}
+      >
+        The name of one installed font, for example JetBrains Mono. If it is not installed, code uses
+        Paseo's Code font.
+      </Text>
+      <TextInput
+        value={draft}
+        onChangeText={setDraft}
+        onBlur={commit}
+        onSubmitEditing={commit}
+        accessibilityLabel="Custom code font"
+        maxLength={80}
+        autoCapitalize="none"
+        autoCorrect={false}
+        spellCheck={false}
+        placeholder="JetBrains Mono"
+        placeholderTextColor={tokens.foregroundSubtle}
+        style={[
+          styles.percentInput,
+          styles.familyInput,
+          {
+            color: tokens.foreground,
+            backgroundColor: tokens.surface2,
+            borderColor: tokens.border,
+            fontFamily: tokens.fontUi,
+          },
+        ]}
+      />
+    </View>
   );
 }
 
@@ -977,9 +1034,30 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           tokens={tokens}
         />
 
+        <ChoiceRow<MonoFontPreference>
+          title="Code font"
+          description="The font for code, diffs, terminal output and paths: the embedded Iosevka, Paseo's own Code font from its Appearance settings, or an installed font you name."
+          value={preferences.monoFont}
+          options={[
+            { value: "iosevka", label: "Iosevka" },
+            { value: "paseo", label: "Paseo" },
+            { value: "custom", label: "Custom" },
+          ]}
+          onChange={(monoFont) => updateEnhancerPreferences({ monoFont })}
+          tokens={tokens}
+        />
+
+        {preferences.monoFont === "custom" ? (
+          <FontFamilyRow
+            value={preferences.monoCustomFont}
+            onChange={(monoCustomFont) => updateEnhancerPreferences({ monoCustomFont })}
+            tokens={tokens}
+          />
+        ) : null}
+
         <ChoiceRow<CodeFontPreference>
           title="Code glyphs"
-          description="Use programming ligatures inside syntax blocks, or keep every code glyph literal."
+          description="Iosevka only: use programming ligatures inside syntax blocks, or keep every code glyph literal."
           value={preferences.codeFont}
           options={[
             { value: "code", label: "Ligatures" },
@@ -1320,6 +1398,7 @@ const styles = StyleSheet.create({
   hueChip: { flex: 1 },
   pickerSwatch: { width: 18, height: 18 },
   hexInput: { minWidth: 110, textAlign: "left" },
+  familyInput: { minWidth: 220, alignSelf: "flex-start", textAlign: "left" },
   reset: {
     alignSelf: "flex-start",
     borderWidth: 1,

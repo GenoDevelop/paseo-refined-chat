@@ -54,6 +54,8 @@ export function paletteHex(
 
 export type UiFontPreference = "inter" | "system";
 export type CodeFontPreference = "code" | "plain";
+/** Which family draws monospace text: the embedded Iosevka, Paseo's own Code font, or a named one. */
+export type MonoFontPreference = "iosevka" | "paseo" | "custom";
 export type MarkdownVariantPreference = "document" | "compact" | "terminal";
 
 /** Arbitrary percentage input, with safety bounds to avoid unreadable layouts. */
@@ -90,6 +92,9 @@ export interface EnhancerPreferences {
   boldCustomColor: string;
   uiFont: UiFontPreference;
   codeFont: CodeFontPreference;
+  monoFont: MonoFontPreference;
+  /** The family used when `monoFont` is `custom`; kept while another choice is active. */
+  monoCustomFont: string;
   /** Independent scale factors (1 = 100%) for replies, tool UI and code. */
   replyScale: number;
   toolScale: number;
@@ -177,6 +182,8 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   boldCustomColor: "#e64980",
   uiFont: "inter",
   codeFont: "code",
+  monoFont: "iosevka",
+  monoCustomFont: "",
   replyScale: 1,
   toolScale: 1,
   codeScale: 1,
@@ -257,6 +264,15 @@ function loadStartCollapsedKinds(
   return legacy;
 }
 
+/**
+ * One family name, as typed. The name ends up inside a CSS declaration, so
+ * everything that could close it, start another or add a second family is dropped.
+ */
+export function sanitizeFontFamily(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.replace(/[<>{}();,"'\\\r\n]/g, "").trim().slice(0, 80);
+}
+
 function loadPreferences(): EnhancerPreferences {
   try {
     const stored = storage()?.getItem(STORAGE_KEY);
@@ -276,6 +292,11 @@ function loadPreferences(): EnhancerPreferences {
       boldCustomColor: sanitizeHex(candidate.boldCustomColor, DEFAULT_PREFERENCES.boldCustomColor),
       uiFont: candidate.uiFont === "system" ? "system" : DEFAULT_PREFERENCES.uiFont,
       codeFont: candidate.codeFont === "plain" ? "plain" : DEFAULT_PREFERENCES.codeFont,
+      monoFont:
+        candidate.monoFont === "paseo" || candidate.monoFont === "custom"
+          ? candidate.monoFont
+          : DEFAULT_PREFERENCES.monoFont,
+      monoCustomFont: sanitizeFontFamily(candidate.monoCustomFont),
       replyScale: sanitizeTypographyScale(candidate.replyScale),
       toolScale: sanitizeTypographyScale(candidate.toolScale),
       codeScale: sanitizeTypographyScale(candidate.codeScale),

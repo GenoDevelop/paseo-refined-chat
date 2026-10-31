@@ -18,7 +18,7 @@ An optional custom accent, an optional colour for bold text, and optional `==hig
 
 Shell, git, read, write, edit, MCP, eval, subagent, hub and Paseo tool calls get typed cards with a short summary of what each did, and failed edits are labelled as not applied. Images in replies and image reads show the picture with a viewer; remote images wait for a click unless you opt in. Links show where they go and warn when their text and target disagree.
 
-Other settings include an interface font, code ligatures, frosted surfaces, user-message bubbles and Markdown presentation styles.
+Other settings include an interface font, a code font (Iosevka, Paseo's own, or any installed font), code ligatures, frosted surfaces, user-message bubbles and Markdown presentation styles.
 
 ## Requirements and setup
 

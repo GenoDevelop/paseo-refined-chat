@@ -56,7 +56,8 @@ A setting that depends on another dims when it cannot apply, and says why.
 | Custom accent colour | Off follows the Paseo theme. On, pick a palette colour or **Custom**. |
 | Colour bold text | Off keeps the surrounding text colour. On, pick a palette colour or **Custom**. |
 | Interface font | Embedded Inter, or the system interface face. |
-| Code glyphs | Iosevka with ligatures, or literal glyphs. |
+| Code font | Iosevka, Paseo's own Code font (followed live), or an installed font you name. |
+| Code glyphs | Iosevka only: with ligatures, or literal glyphs. |
 | Frosted glass | Blur card surfaces, or paint them solid. |
 | Pointer glow | A soft light follows the pointer across each card (desktop and web). |
 
