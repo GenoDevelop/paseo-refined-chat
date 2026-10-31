@@ -27,16 +27,16 @@ intercept Paseo timeline items, so **disable Beautiful Chat before enabling Refi
 Install from the public GitHub repository, which follows `main`:
 
 ```bash
-paseo plugin add git:GenoDevelop/refined-chat
+paseo plugin add git:GenoDevelop/paseo-refined-chat
 ```
 
 To stay on a published release, pin its tag:
 
 ```bash
-paseo plugin add git:GenoDevelop/refined-chat --ref v0.4.0
+paseo plugin add git:GenoDevelop/paseo-refined-chat --ref v0.4.0
 ```
 
-Once the plugin is approved in the Paseo catalog, `paseo plugin add GenoDevelop/refined-chat` works
+Once the plugin is approved in the Paseo catalog, `paseo plugin add GenoDevelop/paseo-refined-chat` works
 too. Requires **Paseo 0.11.0 or later**. Everything below is configured in
 **Settings → Plugins → Refined Chat**, and each setting is stored on the client you change it on.
 

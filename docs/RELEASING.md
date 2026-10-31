@@ -79,7 +79,7 @@ Do not create a workflow or an automatic release pipeline.
 ## 5. Test the tagged GitHub source
 
 ```powershell
-paseo plugin add git:GenoDevelop/refined-chat --ref vX.Y.Z --id refined-chat-tag-test
+paseo plugin add git:GenoDevelop/paseo-refined-chat --ref vX.Y.Z --id refined-chat-tag-test
 paseo plugin ls refined-chat-tag-test
 ```
 
@@ -105,5 +105,5 @@ automatically create a published listing.
 Once approved, users can install using:
 
 ```powershell
-paseo plugin add GenoDevelop/refined-chat
+paseo plugin add GenoDevelop/paseo-refined-chat
 ```
