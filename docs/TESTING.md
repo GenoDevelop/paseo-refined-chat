@@ -33,15 +33,19 @@ No GitHub Actions minutes are consumed.
 
 ## Collapsing behavior
 
-- Defaults: both Auto-collapse tools and Collapse thinking are **off**.
-- Enable auto-collapse, start a long tool call and watch it finish. The card
-  should collapse upon successful completion if untouched.
-- An earlier manual expand/collapse must not be overridden.
-- Failed calls and Ask/question cards should remain accessible.
+- Defaults: nothing folds on its own. "Only fold longer cards" and the
+  per-kind lists are empty.
+- Under "Collapse when finished", pick a kind, start a long call of that kind
+  and watch it finish. The card should fold on success if untouched.
+- Under "Start collapsed", pick a kind: its cards open folded, even if the call
+  later fails. Those kinds appear dimmed and locked under "Collapse when
+  finished". When every kind starts collapsed, "Only fold longer cards" dims.
+- A manual expand or collapse must not be overridden.
+- Failed calls and Ask/question cards stay open unless start-collapsed.
+- A failed edit or write shows no `+X -Y` count, and a failed edit labels its
+  diff "Not applied".
 - Verify the **Collapse** action at the bottom of an expanded long card.
-- Enable Collapse thinking and verify streaming reasoning starts closed,
-  remains available on demand, and has a bottom collapse action.
-- Disable both options and verify the original display behavior returns.
+- Switch the rules off again and verify the original display returns.
 
 ## Interoperability
 
@@ -51,7 +55,6 @@ No GitHub Actions minutes are consumed.
 
 ## Current verification status
 
-The patch is code-reviewed and mechanically checked against upstream PR #9.
-Full `npm ci && npm run typecheck` and Paseo UI smoke tests **must still be
-run locally**; the environment used for preparing this branch could not
-access the npm registry. Do not treat this list as completed test evidence.
+There is no automated test suite. `npm run typecheck` must pass, and each
+change is checked by hand in a running Paseo (`paseo plugin reload`) on a dark
+and a light theme. Each PR states what was and was not exercised.
