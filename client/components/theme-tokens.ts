@@ -1,7 +1,9 @@
+import { Platform } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import {
   DEFAULT_PREFERENCES,
   type EnhancerPreferences,
+  type MonoFontPreference,
   type UiFontPreference,
   paletteHex,
   PALETTE,
@@ -33,6 +35,30 @@ export const fontMono = "OMP Iosevka";
  */
 export const fontCode = "OMP Iosevka Code";
 export const fontUi = "OMP Inter";
+
+/**
+ * Paseo's own Code font (Settings → Appearance → Fonts). The host publishes its
+ * theme as CSS variables on web and desktop, so the `var()` follows the setting
+ * live; the fallback is Paseo's default stack. React Native Web passes
+ * `fontFamily` through as raw CSS, which is why a `var()` and a list are valid
+ * here. Native has no CSS, so it gets the platform monospace.
+ */
+const hostMonoFont =
+  Platform.OS === "web"
+    ? "var(--fontFamily-mono, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace)"
+    : Platform.select({ ios: "Menlo", default: "monospace" });
+
+/**
+ * The monospace family for the chosen setting. A named family comes first and
+ * Paseo's stack follows, so a name that is not installed still renders as code.
+ */
+export function monoFamily(monoFont: MonoFontPreference, custom: string): string | undefined {
+  if (monoFont === "paseo") return hostMonoFont;
+  if (monoFont === "custom" && custom !== "") {
+    return Platform.OS === "web" ? `"${custom}", ${hostMonoFont}` : custom;
+  }
+  return undefined;
+}
 
 /** The family a React Native style takes for the chosen interface font. */
 export const uiFontFamily = (uiFont: UiFontPreference): string =>
@@ -225,6 +251,7 @@ export function buildThemeTokens(
   const danger = colors.statusDanger;
   const tint = isDark ? 0.1 : 0.08;
   const edge = isDark ? 0.22 : 0.18;
+  const mono = monoFamily(preferences.monoFont, preferences.monoCustomFont);
   const scales = {
     reply: preferences.replyScale,
     tool: preferences.toolScale,
@@ -233,8 +260,8 @@ export function buildThemeTokens(
 
   return {
     isDark,
-    fontMono,
-    fontCode: preferences.codeFont === "plain" ? fontMono : fontCode,
+    fontMono: mono ?? fontMono,
+    fontCode: mono ?? (preferences.codeFont === "plain" ? fontMono : fontCode),
     fontUi: uiFontFamily(preferences.uiFont),
 
     scales,
