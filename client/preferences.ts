@@ -86,6 +86,12 @@ export interface EnhancerPreferences {
   assistantMarkdown: boolean;
   /** Which look the markdown renderer uses. */
   markdownVariant: MarkdownVariantPreference;
+  /**
+   * While Paseo's Chat display folds tool calls or whole turns, hands the rows
+   * it needs back to the host. A plugin row is not a host `tool_call`, so the
+   * host cannot count or fold it. Off keeps this plugin's cards in every mode.
+   */
+  yieldToHostFolding: boolean;
 }
 
 const STORAGE_KEY = "paseo/refined-chat/preferences/v1";
@@ -109,6 +115,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   selectionActions: true,
   assistantMarkdown: true,
   markdownVariant: "document",
+  yieldToHostFolding: false,
 };
 
 const listeners = new Set<() => void>();
@@ -170,6 +177,7 @@ function loadPreferences(): EnhancerPreferences {
         candidate.markdownVariant === "compact" || candidate.markdownVariant === "terminal"
           ? candidate.markdownVariant
           : DEFAULT_PREFERENCES.markdownVariant,
+      yieldToHostFolding: candidate.yieldToHostFolding === true,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };
