@@ -107,9 +107,7 @@ The kinds are Shell and Git, Writes, Edits, Reads, Other tools and Thinking. A c
 yourself keeps its state, and an ask card never folds. Expanded cards have a **Collapse** control at the
 bottom, so you do not scroll back to the header.
 
-![Folded and open cards: a collapsed shell card, a folded diff with its Show more lines control, a thinking trace](docs/images/folding.png)
-
-<!-- SCREENSHOT folding: see the screenshot list in the pull request. -->
+![Folding: a read folded after it finished, a written file cut off after 30 lines, and command output with its middle folded](docs/images/folding.png)
 
 ### Long content
 
