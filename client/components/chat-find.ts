@@ -1,4 +1,5 @@
 import { getEnhancerPreferences } from "../preferences";
+import { domFontStack, uiFontFamily } from "./theme-tokens";
 import { revealMatching } from "../fold";
 
 const STYLE_ELEMENT_ID = "refined-chat-find-style";
@@ -27,7 +28,7 @@ const FIND_RULES = `::highlight(${MATCHES}) {
   border-radius: 8px;
   border: 1px solid rgb(127 127 127 / 0.35);
   box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
-  font: 13px var(--paseo-ui-font, system-ui, sans-serif);
+  font-size: 13px;
 }
 #${BAR_ID}[hidden] {
   display: none;
@@ -328,6 +329,7 @@ export function installChatFind(): () => void {
     event.preventDefault();
     event.stopImmediatePropagation();
     chat = target;
+    bar.style.fontFamily = domFontStack(uiFontFamily(getEnhancerPreferences().uiFont));
     bar.hidden = false;
     place();
     input.focus();

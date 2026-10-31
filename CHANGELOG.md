@@ -5,6 +5,9 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 
 ## [Unreleased]
 
+### Fixed
+- The selection bar (Copy, Add to chat) and the find bar now use the interface font chosen in the settings. The selection bar passed the setting to CSS as a React Native name, which the browser ignored for System, and the find bar took the host font.
+
 ## [0.4.0] - 2026-10-31
 
 ### Added
