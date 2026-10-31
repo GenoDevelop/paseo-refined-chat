@@ -9,6 +9,7 @@ import { installHostNoticeStyle } from "./client/components/host-notice";
 import { installChatFind } from "./client/components/chat-find";
 import { extractPromptImages } from "./client/prompt-images";
 import { getEnhancerPreferences } from "./client/preferences";
+import { yieldsToHost } from "./client/host-chat-display";
 import {
   LiveToolCallRenderer,
   LiveReasoningRenderer,
@@ -51,6 +52,7 @@ export default function contribute(client: PluginClientContext) {
     query: { itemType: "tool_call" },
     transform({ item, phase }) {
       if (item.type !== "tool_call") return undefined;
+      if (yieldsToHost("tool_call")) return undefined;
       return {
         items: [
           {
@@ -90,6 +92,7 @@ export default function contribute(client: PluginClientContext) {
     query: { itemType: "reasoning" },
     transform({ item, phase }) {
       if (item.type !== "reasoning") return undefined;
+      if (yieldsToHost("reasoning")) return undefined;
       return {
         items: [
           {
@@ -156,6 +159,7 @@ export default function contribute(client: PluginClientContext) {
       // bubble would silently swallow a pasted screenshot. The preference lets
       // the reader trade the bubble for the host's image previews.
       if (!getEnhancerPreferences().enhancedUserBubble) return undefined;
+      if (yieldsToHost("user_message")) return undefined;
       const images = extractPromptImages(item);
       // Replacing the item drops whatever this renderer does not carry, so a
       // message with an attachment it cannot show is left to the host.
@@ -207,6 +211,7 @@ export default function contribute(client: PluginClientContext) {
     transform({ item }) {
       if (item.type !== "assistant_message") return undefined;
       if (!getEnhancerPreferences().assistantMarkdown) return undefined;
+      if (yieldsToHost("assistant_message")) return undefined;
       if (!item.text.trim()) return undefined;
       return {
         items: [

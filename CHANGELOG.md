@@ -5,6 +5,9 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 
 ## [Unreleased]
 
+### Added
+- "Let Paseo fold tool calls and turns" (off by default). Paseo's Chat display can fold tool calls into one row, or a whole turn into its reply, but only for rows it draws itself, and this plugin replaces them with its own. With the setting on and Chat display set to Collapse tool calls, tool calls and reasoning are left to Paseo; with Collapse turns, prompts and replies are too. Rows are drawn once when they load, so after changing either setting reload the plugin or restart the app.
+
 ## [0.3.0] - 2026-10-31
 
 ### Added

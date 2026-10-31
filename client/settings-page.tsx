@@ -556,6 +556,14 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         />
 
         <ToggleRow
+          title="Let Paseo fold tool calls and turns"
+          description="Only acts when Paseo's Chat display is Collapse tool calls or Collapse turns. Paseo can fold only its own rows, so with this on, tool calls and reasoning (and, for Collapse turns, prompts and replies, which then ignore the reply size and spacing set here) are drawn by Paseo instead of this plugin. Off keeps this plugin's cards in every mode, and Paseo does not fold them. Rows are drawn once when they load, so after changing this or Paseo's Chat display, reload the plugin or restart the app."
+          value={preferences.yieldToHostFolding}
+          onChange={(yieldToHostFolding) => updateEnhancerPreferences({ yieldToHostFolding })}
+          tokens={tokens}
+        />
+
+        <ToggleRow
           title="Frosted glass"
           description="Blur surfaces where the host supports it, or use solid surfaces instead."
           value={preferences.frostedGlass}
