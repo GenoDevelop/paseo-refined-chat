@@ -18,6 +18,12 @@ An optional custom accent, an optional colour for bold text, and optional `==hig
 
 Shell, git, read, write, edit, MCP, eval, subagent, hub and Paseo tool calls get typed cards with a short summary of what each did, and failed edits are labelled as not applied. Images in replies and image reads show the picture with a viewer; remote images wait for a click unless you opt in. Links show where they go and warn when their text and target disagree.
 
+## File preview
+
+A file path in a reply (`src/app.ts`, `C:\work\app.ts:55`) is a link. Pressing a file opens it read-only in a side panel, with syntax colours and line numbers. A line number (`app.ts:55`) marks that line and scrolls to it. A Markdown file opens rendered, with a button for its source, and its links to other files and headings work inside the panel, with a Back button. Pictures open drawn. The same applies to a file name on a read, write or edit card, which marks the line the call read or changed. A folder, or a file the panel cannot show, opens in your file manager instead. The setting **File paths in replies** switches between the panel and the file manager.
+
+The panel only reads files inside the agent's working directory, up to 1 MB, and only text; pictures are limited to 3 MB. The Advanced setting **Preview files outside the project (at your own risk)** is off by default. Turned on, it lets the panel read a text file outside the working directory too, and the size and text limits still apply. Network paths (`\\host\share`) are never read.
+
 Other settings include an interface font, a code font (Iosevka, Paseo's own, or any installed font), code ligatures, frosted surfaces, user-message bubbles and Markdown presentation styles.
 
 ## Requirements and setup
@@ -31,7 +37,7 @@ The plugin uses a subset of Paseo's Markdown capabilities. Disable **Assistant m
 
 ## Data access and permissions
 
-Refined Chat receives the chat message and tool-result data provided by Paseo. For syntax highlighting, it passes text to the Paseo daemon, which processes it using installed local libraries. It can read a referenced local image for preview and can ask the host operating system to reveal a file path when a user chooses that action. Image previews are limited to 3 MB.
+Refined Chat receives the chat message and tool-result data provided by Paseo. For syntax highlighting, it passes text to the Paseo daemon, which processes it using installed local libraries. It can read a referenced local image for preview and can ask the host operating system to reveal a file path when a user chooses that action. Image previews are limited to 3 MB. When you press a file path, the daemon reads that text file (at most 1 MB, inside the agent's working directory unless you turn on the outside-project setting) and returns its contents to your client to draw. Paths come from the agent's reply, so the plugin never opens or runs a file, and it refuses network paths.
 
 The plugin does not provide its own model service or require a separate external account. It does not add a separate network-based telemetry service. The configured agent provider may still receive chat data through Paseo as part of normal agent operation.
 
