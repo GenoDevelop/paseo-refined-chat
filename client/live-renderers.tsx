@@ -22,7 +22,7 @@ import { NoticeCallout } from "./components/notice-callout";
 import { useEnhancerPreferences } from "./preferences";
 import { buildHubData } from "./hub-details";
 import { publishHubSnapshot } from "./hub-activity";
-import { MarkdownView } from "./components/markdown/markdown-view";
+import { MarkdownView, RevealPathContext } from "./components/markdown/markdown-view";
 import { TimelineTailHub } from "./components/hub-live";
 import { AssistantFooter } from "./components/turn-footer";
 import { SystemCard } from "./components/system-card";
@@ -857,17 +857,30 @@ export function LiveAssistantRenderer({
   // the model's words, so they are drawn as a card, not as prose.
   const envelope = useMemo(() => parseSystemEnvelope(item.data.text), [item.data.text]);
 
+  // A path in inline code reveals the same way a tool card's file name does.
+  // Without a working directory a relative path has nothing to resolve against.
+  const cwd = useAgent(agentId, (agent) => agent.cwd);
+  const revealPath = useRpc(revealPathRpc);
+  const handleRevealPath = useCallback(
+    (path: string) => {
+      void revealPath({ cwd: cwd ?? "", path }).catch(() => {});
+    },
+    [cwd, revealPath],
+  );
+
   return (
     <View {...hostFontEscape}>
       {envelope ? (
         <SystemCard envelope={envelope} tokens={tokens} />
       ) : (
-        <MarkdownView
-          text={item.data.text}
-          tokens={tokens}
-          variant={preferences.markdownVariant}
-          marks={preferences.highlightMarks}
-        />
+        <RevealPathContext.Provider value={cwd ? handleRevealPath : null}>
+          <MarkdownView
+            text={item.data.text}
+            tokens={tokens}
+            variant={preferences.markdownVariant}
+            marks={preferences.highlightMarks}
+          />
+        </RevealPathContext.Provider>
       )}
       {isTail && !envelope ? (
         <AssistantFooter text={item.data.text} at={timestamp} tokens={tokens} />
