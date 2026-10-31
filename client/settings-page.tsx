@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
+import { COLLAPSE_KINDS, COLLAPSE_KIND_LABELS } from "./tool-collapse";
+import type { CollapseKind } from "./tool-collapse";
 import { hostFontEscape } from "./components/host-font-escape";
 import { radius, buildThemeTokens, type ExtendedThemeTokens } from "./components/theme-tokens";
 import {
@@ -207,6 +209,61 @@ function ChoiceRow<T extends string>({
             tokens={tokens}
           />
         ))}
+      </View>
+    </View>
+  );
+}
+
+/** A row of independent choices, each switched on or off; the selected ones are active. */
+function MultiChoiceRow<T extends string>({
+  title,
+  description,
+  value,
+  options,
+  onChange,
+  tokens,
+}: {
+  title: string;
+  description: string;
+  value: readonly T[];
+  options: ReadonlyArray<{ value: T; label: string }>;
+  onChange(value: T[]): void;
+  tokens: ExtendedThemeTokens;
+}) {
+  return (
+    <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
+      <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+        {title}
+      </Text>
+      <Text
+        style={[
+          styles.rowDescription,
+          { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
+        ]}
+      >
+        {description}
+      </Text>
+      <View style={styles.options}>
+        {options.map((option) => {
+          const selected = value.includes(option.value);
+          return (
+            <OptionButton
+              key={option.value}
+              label={option.label}
+              selected={selected}
+              onPress={() =>
+                onChange(
+                  options
+                    .map((entry) => entry.value)
+                    .filter((entry) =>
+                      entry === option.value ? !selected : value.includes(entry),
+                    ),
+                )
+              }
+              tokens={tokens}
+            />
+          );
+        })}
       </View>
     </View>
   );
@@ -563,19 +620,29 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           tokens={tokens}
         />
 
-        <ToggleRow
-          title="Auto-collapse tools"
-          description="Folds a tool card back up once it finishes. A failed call stays open, and a card you opened or closed yourself keeps its state."
-          value={preferences.autoCollapseTools}
-          onChange={(autoCollapseTools) => updateEnhancerPreferences({ autoCollapseTools })}
+        <MultiChoiceRow<CollapseKind>
+          title="Cards to collapse when finished"
+          description="Cards that fold back up once they finish; none turns folding off. A failed call and an ask card stay open, and a card you opened or closed yourself keeps its state. Thinking stays open while it streams, then folds."
+          value={preferences.autoCollapseKinds}
+          options={COLLAPSE_KINDS.map((kind) => ({ value: kind, label: COLLAPSE_KIND_LABELS[kind] }))}
+          onChange={(autoCollapseKinds) => updateEnhancerPreferences({ autoCollapseKinds })}
           tokens={tokens}
         />
 
-        <ToggleRow
-          title="Collapse thinking"
-          description="Starts a thinking stream folded; open one to read the reasoning while it streams."
-          value={preferences.collapseThinking}
-          onChange={(collapseThinking) => updateEnhancerPreferences({ collapseThinking })}
+        <LineLimitRow
+          title="Collapse length"
+          description="Folding on finish leaves a tool card open while its output, code and diff total fewer lines than this. 0 folds every card."
+          value={preferences.autoCollapseMinLines}
+          onChange={(autoCollapseMinLines) => updateEnhancerPreferences({ autoCollapseMinLines })}
+          tokens={tokens}
+        />
+
+        <MultiChoiceRow<CollapseKind>
+          title="Cards that start collapsed"
+          description="Drawn folded from the start, even while still running, and open to read. Independent of folding on finish. A failed call opens anyway."
+          value={preferences.startCollapsedKinds}
+          options={COLLAPSE_KINDS.map((kind) => ({ value: kind, label: COLLAPSE_KIND_LABELS[kind] }))}
+          onChange={(startCollapsedKinds) => updateEnhancerPreferences({ startCollapsedKinds })}
           tokens={tokens}
         />
 

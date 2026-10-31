@@ -23,6 +23,8 @@ import type { ImageFile } from "../image-file";
 import { selectableSurface, unselectable } from "./selection";
 import { selectionCodeText, selectionSurface } from "./selection-actions";
 import type { ToolCalloutData } from "../../shared/contracts";
+import { shouldAutoCollapse } from "../tool-collapse";
+import type { AutoCollapseRules } from "../tool-collapse";
 
 /** Lines in a block of text, ignoring the newline that ends the last one. */
 function countLines(text: string): number {
@@ -60,7 +62,7 @@ interface ToolCalloutProps {
    * Folds a card back up as soon as it finishes. A card the user has opened
    * or closed themselves keeps its state, and a failed call always stays open.
    */
-  autoCollapse?: boolean;
+  autoCollapse?: AutoCollapseRules;
   /** Shows a path in the machine's own file manager. */
   onRevealPath?: (path: string) => void;
   /**
@@ -84,7 +86,7 @@ export function ToolCallout({
   data,
   tokens,
   defaultExpanded = true,
-  autoCollapse = false,
+  autoCollapse,
   onRevealPath,
   imageFile,
   editLine,
@@ -141,9 +143,14 @@ export function ToolCallout({
   useEffect(() => {
     const wasRunning = previousStatus.current === "running";
     previousStatus.current = data.status;
-    if (!autoCollapse || touched || data.tool === "ask") return;
-    if (wasRunning && data.status === "completed") setExpanded(false);
-  }, [autoCollapse, touched, data.status, data.tool]);
+    if (touched) return;
+    // A card that started folded because open-while-running is off still opens
+    // for a failure, so the error is in view.
+    if (data.status === "failed") setExpanded(true);
+    else if (autoCollapse && wasRunning && shouldAutoCollapse(data, autoCollapse)) {
+      setExpanded(false);
+    }
+  }, [autoCollapse, touched, data]);
 
   // Only a real shell call can "complete without output". A git op or an
   // unmapped tool that prints nothing is not a silent command, so neither
