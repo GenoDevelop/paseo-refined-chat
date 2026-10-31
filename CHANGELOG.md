@@ -9,6 +9,7 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 - "Code font": choose the font for code, diffs, terminal output and paths. Iosevka stays the default; "Paseo" follows the Code font set in Paseo's Appearance settings, live; "Custom" takes the name of an installed font and falls back to Paseo's Code font if it is missing. "Code glyphs" (ligatures or literal) applies to Iosevka only. Paseo's Code size is not followed: the "Code and terminal" text size still sets the size. Web and desktop follow Paseo's font; iOS and Android use the platform monospace for "Paseo".
 
 ### Fixed
+- The Copy button on code blocks uses the host clipboard instead of the browser one, which native apps lack, and shows "Copied" only after the copy succeeded.
 - The selection bar (Copy, Add to chat) and the find bar now use the interface font chosen in the settings. The selection bar passed the setting to CSS as a React Native name, which the browser ignored for System, and the find bar took the host font.
 
 ## [0.4.0] - 2026-10-31
