@@ -23,6 +23,8 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 - The README is rewritten around the settings page and what the plugin does today, with new screenshots; OVERVIEW.md follows it.
 
 ### Fixed
+- The Bash and Rust file marks, drawn in black or near black, were nearly invisible on a dark card. They now take the text colour, like the Markdown mark.
+- A link whose text is a file name (`tool-collapse.ts`, `README.md`) no longer shows the amber warning: its extension looked like a domain that differed from the link target.
 - A failed edit or write no longer shows a `+X -Y` count in its header, and a failed edit labels its diff as not applied, since nothing changed on disk.
 
 ## [0.3.0] - 2026-10-31
