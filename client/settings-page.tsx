@@ -541,9 +541,17 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
 
         <LineLimitRow
           title="Long code and diffs"
-          description="File reads, writes, diffs and structured data (MCP, GitHub, eval code) past this many lines show the first lines and fold the rest. 0 never folds."
+          description="File reads, writes, diffs, structured data (MCP, GitHub, eval code) and code blocks in replies past this many lines show the first lines and fold the rest. 0 never folds."
           value={preferences.codeMaxLines}
           onChange={(codeMaxLines) => updateEnhancerPreferences({ codeMaxLines })}
+          tokens={tokens}
+        />
+
+        <LineLimitRow
+          title="Long prompts"
+          description="A prompt you wrote past this many lines shows its first lines and folds the rest, in this plugin's prompt bubble only. A long paragraph with no line breaks counts by about 70 characters a line. 0 never folds."
+          value={preferences.promptMaxLines}
+          onChange={(promptMaxLines) => updateEnhancerPreferences({ promptMaxLines })}
           tokens={tokens}
         />
 

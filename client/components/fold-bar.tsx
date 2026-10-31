@@ -10,12 +10,16 @@ interface FoldBarProps {
   /** True once the reader has opened the block, so the bar offers to close it. */
   open: boolean;
   tokens: ExtendedThemeTokens;
+  /** Replaces the closed label, for a fold whose hidden count is only an estimate. */
+  closedLabel?: string;
   onPress(): void;
 }
 
 /** The control a folded block carries: how much is hidden, and a way to see it. */
-export function FoldBar({ hidden, open, tokens, onPress }: FoldBarProps) {
-  const label = open ? "Show less" : `Show ${hidden} more ${hidden === 1 ? "line" : "lines"}`;
+export function FoldBar({ hidden, open, tokens, closedLabel, onPress }: FoldBarProps) {
+  const label = open
+    ? "Show less"
+    : (closedLabel ?? `Show ${hidden} more ${hidden === 1 ? "line" : "lines"}`);
   return (
     <Pressable
       onPress={onPress}

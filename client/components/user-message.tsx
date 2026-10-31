@@ -8,6 +8,8 @@ import { radius } from "./theme-tokens";
 import type { ExtendedThemeTokens } from "./theme-tokens";
 import { selectableSurface } from "./selection";
 import { selectionSurface } from "./selection-actions";
+import { planFold, useFold } from "../fold";
+import { FoldBar } from "./fold-bar";
 
 export interface TurnUsage {
   inputTokens?: number;
@@ -16,6 +18,9 @@ export interface TurnUsage {
   contextWindowUsedTokens?: number;
   contextWindowMaxTokens?: number;
 }
+
+/** Typical characters per row of a prompt, used only to decide whether to fold. */
+const CHARS_PER_ROW = 70;
 
 interface UserMessageProps {
   text: string;
@@ -28,6 +33,8 @@ interface UserMessageProps {
   usage?: TurnUsage | null;
   /** True while the turn is still running, so the figures are still climbing. */
   pending?: boolean;
+  /** Lines of the prompt shown before the rest folds; zero shows all. */
+  maxLines?: number;
 }
 
 /**
@@ -80,6 +87,7 @@ export function UserMessage({
   tokens,
   usage,
   pending = false,
+  maxLines = 0,
 }: UserMessageProps) {
   const [copied, setCopied] = useState(false);
   const handleCopy = useCallback(() => {
@@ -92,6 +100,21 @@ export function UserMessage({
       })
       .catch(() => {});
   }, [text]);
+
+  // A prompt with a pasted file would push the thread far apart, so a long one
+  // keeps its first lines behind a control. Copy still takes the whole prompt.
+  // A long paragraph has no line breaks, so each line counts as many rows as
+  // it would wrap to; the clamp itself then counts the real wrapped rows.
+  const estimatedRows = useMemo(
+    () =>
+      text
+        .replace(/\s+$/, "")
+        .split("\n")
+        .reduce((rows, line) => rows + Math.max(1, Math.ceil(line.length / CHARS_PER_ROW)), 0),
+    [text],
+  );
+  const plan = useMemo(() => planFold(estimatedRows, maxLines, "head"), [estimatedRows, maxLines]);
+  const { folded, open, setOpen } = useFold(text, plan);
 
   const styles = useMemo(
     () =>
@@ -208,9 +231,22 @@ export function UserMessage({
             </Pop>
           </Pressable>
         </View>
-        <Text selectable style={styles.text}>
+        <Text
+          selectable
+          style={styles.text}
+          numberOfLines={plan && folded ? maxLines : undefined}
+        >
           {text}
         </Text>
+        {plan ? (
+          <FoldBar
+            hidden={plan.hidden}
+            open={open}
+            tokens={tokens}
+            closedLabel="Show full prompt"
+            onPress={() => setOpen(!open)}
+          />
+        ) : null}
         {images?.length ? (
           <View style={styles.imageRow}>
             {images.map((uri) => (

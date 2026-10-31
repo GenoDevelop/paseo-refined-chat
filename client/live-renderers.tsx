@@ -978,6 +978,7 @@ export function LiveUserMessageRenderer({
           images={item.data.images}
           timestamp={timestamp}
           tokens={tokens}
+          maxLines={preferences.promptMaxLines}
           usage={observedLive ? usage : null}
           pending={running && !frozen}
         />

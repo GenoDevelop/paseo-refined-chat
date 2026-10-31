@@ -198,6 +198,8 @@ interface RenderContext {
   styles: MarkdownStyles;
   tokens: ExtendedThemeTokens;
   metrics: VariantMetrics;
+  /** Lines of a code block shown before the rest folds; zero shows all. */
+  codeMaxLines: number;
 }
 
 /**
@@ -242,9 +244,10 @@ export function MarkdownView({ text, tokens, variant }: MarkdownViewProps) {
     [variant, tokens],
   );
   const styles = useMemo(() => buildStyles(tokens, variant, metrics), [tokens, variant, metrics]);
+  const { codeMaxLines } = useEnhancerPreferences();
   const context = useMemo<RenderContext>(
-    () => ({ styles, tokens, metrics }),
-    [styles, tokens, metrics],
+    () => ({ styles, tokens, metrics, codeMaxLines }),
+    [styles, tokens, metrics, codeMaxLines],
   );
 
   // Pictures that follow one another sit in one row that wraps, not one under
@@ -560,6 +563,7 @@ function renderBlock(
             tokens={tokens}
             compact={metrics.codeCompact}
             showLineNumbers={metrics.codeLineNumbers}
+            maxLines={context.codeMaxLines}
           />
         </View>
       );
