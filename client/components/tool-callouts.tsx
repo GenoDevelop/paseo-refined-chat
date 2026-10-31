@@ -23,6 +23,7 @@ import type { ImageFile } from "../image-file";
 import { selectableSurface, unselectable } from "./selection";
 import { selectionCodeText, selectionSurface } from "./selection-actions";
 import type { ToolCalloutData } from "../../shared/contracts";
+import { lineSelector } from "../../shared/file-rpc";
 import { shouldAutoCollapse } from "../tool-collapse";
 import type { AutoCollapseRules } from "../tool-collapse";
 
@@ -118,10 +119,23 @@ export function ToolCallout({
   const filePath = data.filePath;
   // A tool without a path, or a host that cannot reveal one, leaves the file
   // name as a plain label rather than a link that does nothing.
-  const revealFile = useMemo(
-    () => (onRevealPath && filePath ? () => onRevealPath(filePath) : undefined),
-    [onRevealPath, filePath],
-  );
+  // A read says where it began and an edit where it landed, so the panel marks
+  // that line: the daemon strips the `:N` selector before it touches the disk.
+  // A diff computed from old and new text has relative hunk numbers, so there
+  // only the daemon's `editLine` is trustworthy.
+  const targetLine = useMemo(() => {
+    if (data.tool === "read") return data.startLine ?? null;
+    if (data.tool !== "edit") return null;
+    if (editLine) return editLine;
+    if (data.diffComputed || !data.diff) return null;
+    const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)/m.exec(data.diff);
+    return hunk ? Number(hunk[1]) : null;
+  }, [data.tool, data.startLine, data.diff, data.diffComputed, editLine]);
+  const revealFile = useMemo(() => {
+    if (!onRevealPath || !filePath) return undefined;
+    const marked = targetLine && lineSelector(filePath) === null ? `${filePath}:${targetLine}` : filePath;
+    return () => onRevealPath(marked);
+  }, [onRevealPath, filePath, targetLine]);
 
   const isSuccess = data.status === "completed";
   const isRunning = data.status === "running";

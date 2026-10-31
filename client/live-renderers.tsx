@@ -410,6 +410,40 @@ export function languageFromPath(filePath?: string): string | undefined {
   return LANGUAGE_BY_EXTENSION[ext];
 }
 
+/**
+ * What pressing a path does: a file goes to the side panel when the setting
+ * says so, anything else to the file manager. A folder has nothing to read,
+ * and the panel itself says why it cannot show a file, so only a file goes
+ * there. Without a known `kind` (a tool card's path) the disk is asked.
+ */
+function usePathOpener(
+  cwd: string | undefined | null,
+  workspaceId: string | undefined | null,
+  pathOpens: string,
+): (path: string, kind?: PathKind) => void {
+  const revealPath = useRpc(revealPathRpc);
+  const fileKind = useRpc(fileKindRpc);
+  return useCallback(
+    (path: string, kind?: PathKind) => {
+      const reveal = () => void revealPath({ cwd: cwd ?? "", path }).catch(() => {});
+      const canPreview = pathOpens === "panel" && workspaceId && cwd;
+      const show = () => (canPreview && openFilePreview(workspaceId, cwd, path)) || reveal();
+      if (kind === "file") return show();
+      // `~/.gitconfig` or `C:\work\Makefile` reads like a folder: no trailing
+      // separator and no extension to tell. Only the disk knows, so ask first.
+      if (canPreview && !/[\\/]$/.test(path.trim())) {
+        fileKind({ cwd, path }).then(
+          (answer) => (answer.kind === "file" ? show() : reveal()),
+          reveal,
+        );
+        return;
+      }
+      reveal();
+    },
+    [cwd, fileKind, pathOpens, revealPath, workspaceId],
+  );
+}
+
 export function LiveToolCallRenderer({
   agentId,
   item,
@@ -417,8 +451,8 @@ export function LiveToolCallRenderer({
   layout,
   timestamp,
 }: PluginTimelineItemProps<LiveToolCallPayload>) {
-  const revealPath = useRpc(revealPathRpc);
   const cwd = useAgent(agentId, (agent) => agent.cwd);
+  const workspaceId = useAgent(agentId, (agent) => agent.workspaceId);
   const preferences = useEnhancerPreferences();
   const tokens = useMemo(
     () => buildThemeTokens(theme.colors, preferences),
@@ -660,12 +694,8 @@ export function LiveToolCallRenderer({
 
   // The daemon side owns the shell, so revealing a file is one RPC. A path the
   // daemon cannot stat answers with an error the press simply ignores.
-  const handleRevealPath = useCallback(
-    (path: string) => {
-      void revealPath({ cwd: cwd ?? "", path }).catch(() => {});
-    },
-    [cwd, revealPath],
-  );
+  const openPath = usePathOpener(cwd, workspaceId, preferences.pathOpens);
+  const handleRevealPath = useCallback((path: string) => openPath(path), [openPath]);
 
   // Only a read or write of an image asks the daemon for bytes; the hook
   // itself refuses every other path, so a code read costs no RPC.
@@ -863,29 +893,7 @@ export function LiveAssistantRenderer({
   // Without a working directory a relative path has nothing to resolve against.
   const cwd = useAgent(agentId, (agent) => agent.cwd);
   const workspaceId = useAgent(agentId, (agent) => agent.workspaceId);
-  const revealPath = useRpc(revealPathRpc);
-  const fileKind = useRpc(fileKindRpc);
-  const handleRevealPath = useCallback(
-    (path: string, kind: PathKind) => {
-      const reveal = () => void revealPath({ cwd: cwd ?? "", path }).catch(() => {});
-      const canPreview = preferences.pathOpens === "panel" && workspaceId && cwd;
-      const show = () => (canPreview && openFilePreview(workspaceId, cwd, path)) || reveal();
-      // A folder has nothing to read, and the panel itself says why it cannot
-      // show a file, so only a file goes there.
-      if (kind === "file") return show();
-      // `~/.gitconfig` or `C:\work\Makefile` reads like a folder: no trailing
-      // separator and no extension to tell. Only the disk knows, so ask first.
-      if (canPreview && !/[\\/]$/.test(path.trim())) {
-        fileKind({ cwd, path }).then(
-          (answer) => (answer.kind === "file" ? show() : reveal()),
-          reveal,
-        );
-        return;
-      }
-      reveal();
-    },
-    [cwd, fileKind, preferences.pathOpens, revealPath, workspaceId],
-  );
+  const handleRevealPath = usePathOpener(cwd, workspaceId, preferences.pathOpens);
 
   return (
     <View {...hostFontEscape}>
