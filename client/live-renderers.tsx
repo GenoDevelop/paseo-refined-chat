@@ -22,6 +22,8 @@ import { NoticeCallout } from "./components/notice-callout";
 import { useEnhancerPreferences } from "./preferences";
 import { buildHubData } from "./hub-details";
 import { publishHubSnapshot } from "./hub-activity";
+import { openFilePreview } from "./file-preview";
+import type { PathKind } from "./components/markdown/file-path";
 import { MarkdownView, RevealPathContext } from "./components/markdown/markdown-view";
 import { TimelineTailHub } from "./components/hub-live";
 import { AssistantFooter } from "./components/turn-footer";
@@ -860,12 +862,24 @@ export function LiveAssistantRenderer({
   // A path in inline code reveals the same way a tool card's file name does.
   // Without a working directory a relative path has nothing to resolve against.
   const cwd = useAgent(agentId, (agent) => agent.cwd);
+  const workspaceId = useAgent(agentId, (agent) => agent.workspaceId);
   const revealPath = useRpc(revealPathRpc);
   const handleRevealPath = useCallback(
-    (path: string) => {
+    (path: string, kind: PathKind) => {
+      // A folder has nothing to read, and the panel itself says why it cannot
+      // show a file, so only a file goes there.
+      if (
+        kind === "file" &&
+        preferences.pathOpens === "panel" &&
+        workspaceId &&
+        cwd &&
+        openFilePreview(workspaceId, cwd, path)
+      ) {
+        return;
+      }
       void revealPath({ cwd: cwd ?? "", path }).catch(() => {});
     },
-    [cwd, revealPath],
+    [cwd, preferences.pathOpens, revealPath, workspaceId],
   );
 
   return (

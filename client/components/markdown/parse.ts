@@ -80,17 +80,26 @@ const MAX_INLINE_DEPTH = 4;
 /** Two spaces, or a trailing backslash, are the author asking for a new line. */
 const HARD_BREAK_RE = /(?: {2,}|\\)$/;
 
-export function parseMarkdown(text: string): MdBlock[] {
+/**
+ * `starts`, when given, receives the line (counted from 0) each block opened on,
+ * one entry per block, so a position in the source can be matched to the block
+ * that draws it.
+ */
+export function parseMarkdown(text: string, starts?: number[]): MdBlock[] {
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
   const blocks: MdBlock[] = [];
   let index = 0;
+  let opened = 0;
 
   while (index < lines.length) {
+    // Whatever the previous pass added opened on the line that pass began with.
+    while (starts && starts.length < blocks.length) starts.push(opened);
     const line = lines[index] ?? "";
     if (line.trim() === "") {
       index++;
       continue;
     }
+    opened = index;
 
     const fence = FENCE_RE.exec(line);
     if (fence !== null) {
@@ -132,6 +141,7 @@ export function parseMarkdown(text: string): MdBlock[] {
     index = readParagraph(lines, index, blocks);
   }
 
+  while (starts && starts.length < blocks.length) starts.push(opened);
   return blocks;
 }
 

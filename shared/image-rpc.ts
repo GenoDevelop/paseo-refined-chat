@@ -2,6 +2,13 @@ import { defineRpc } from "@getpaseo/plugin";
 import { z } from "zod";
 
 /**
+ * A data URI travels through the RPC as base64 in a JSON string, so the wire
+ * cost is about a third above the file itself. Past this the thumbnail is not
+ * worth the message, and the card reports the size instead of drawing it.
+ */
+export const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+
+/**
  * Reads an image file so the chat can show it.
  *
  * A read of a `.png` arrives as a tool call whose `code` is the reader's

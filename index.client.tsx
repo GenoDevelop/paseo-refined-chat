@@ -2,6 +2,7 @@ import type { PluginClientContext } from "@getpaseo/plugin/client";
 import { z } from "zod";
 import { BeautifulChatSettingsPage } from "./client/settings-page";
 import { embedFonts } from "./client/components/embed-fonts";
+import { FILE_PREVIEW_PANEL_ID, FilePreviewPanel, registerPanelOpener } from "./client/file-preview";
 import { installFrostedGlass } from "./client/components/frosted";
 import { installShimmer } from "./client/components/shimmer";
 import { installPointerGlow } from "./client/components/glow";
@@ -48,6 +49,15 @@ export default function contribute(client: PluginClientContext) {
     icon: "Blocks",
     Component: BeautifulChatSettingsPage,
   });
+
+  const removeFilePanel = client.addWorkspacePanel({
+    id: FILE_PREVIEW_PANEL_ID,
+    title: "File preview",
+    icon: "FileText",
+    locations: ["explorer"],
+    Component: FilePreviewPanel,
+  });
+  registerPanelOpener((id, options) => client.openPanel(id, options));
 
   // Live chat timeline interception: render real tool calls, reasoning, and todos with enhanced UI.
   const removeToolTransformer = client.addTimelineTransformer({
@@ -274,6 +284,8 @@ export default function contribute(client: PluginClientContext) {
   });
 
   return () => {
+    registerPanelOpener(null);
+    removeFilePanel();
     removeFonts();
     removeFrost();
     removeShimmer();

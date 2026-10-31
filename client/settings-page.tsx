@@ -36,6 +36,7 @@ import {
   type PaletteColor,
   type CodeFontPreference,
   type MonoFontPreference,
+  type PathOpensPreference,
   type UiFontPreference,
 } from "./preferences";
 
@@ -1160,6 +1161,18 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           tokens={tokens}
         />
 
+        <ChoiceRow<PathOpensPreference>
+          title="File paths in replies"
+          description="A file path in inline code is a link. It can show the file in a side panel (text files inside the project, read-only) or in your file manager. A folder, or a file the panel cannot show, always opens in the file manager."
+          value={preferences.pathOpens}
+          options={[
+            { value: "panel", label: "Side panel" },
+            { value: "manager", label: "File manager" },
+          ]}
+          onChange={(pathOpens) => updateEnhancerPreferences({ pathOpens })}
+          tokens={tokens}
+        />
+
         <ColourRow<Exclude<MarkColorChoice, "custom">>
           title="Highlight marks"
           description="Draws ==text== in a reply as a highlighter mark. It is not standard markdown, and the assistant writes it only if your instructions ask for it. Off shows the equals signs as typed."
@@ -1299,6 +1312,16 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           value={preferences.loadRemoteImages}
           onChange={(loadRemoteImages) =>
             updateEnhancerPreferences({ loadRemoteImages })
+          }
+          tokens={tokens}
+        />
+
+        <ToggleRow
+          title="Preview files outside the project (at your own risk)"
+          description="Off: the side panel reads only files inside the agent's working directory. On: it also reads any text file the path points to, up to 1 MB. The agent writes the path, so a prompt injection can put a link to a private file, such as ~/.ssh/config, in a reply; the file is read only when you press the link, and its contents then show on screen and in screenshots. Turn this on only if you accept that."
+          value={preferences.previewOutsideProject}
+          onChange={(previewOutsideProject) =>
+            updateEnhancerPreferences({ previewOutsideProject })
           }
           tokens={tokens}
         />

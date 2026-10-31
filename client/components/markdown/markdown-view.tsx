@@ -7,7 +7,7 @@ import { selectableSurface, unselectable } from "../selection";
 import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
 import { openLink } from "../open-link";
-import { pathKind } from "./file-path";
+import { pathKind, type PathKind } from "./file-path";
 import { linkProps, pathLinkProps } from "./link-style";
 import { parseMarkdown, type MdAlign, type MdBlock, type MdInline, type MdListItem } from "./parse";
 import { ReplyImage, THUMB_HEIGHT, THUMB_WIDTH } from "../reply-image";
@@ -30,6 +30,12 @@ export interface MarkdownViewProps {
   variant: MarkdownVariant;
   /** Draws `==text==` as a highlighter mark; off keeps the equals signs as typed. */
   marks?: boolean;
+  /**
+   * A line of the source (counted from 1) to mark: the block that holds it is
+   * tinted, and `onLinePosition` gets its offset from the top of the text.
+   */
+  line?: number;
+  onLinePosition?: (y: number) => void;
 }
 
 type MdTableBlock = Extract<MdBlock, { kind: "table" }>;
@@ -242,8 +248,23 @@ function scaleMetrics(metrics: VariantMetrics, scale: number, spacing: number): 
   };
 }
 
-export function MarkdownView({ text, tokens, variant, marks = false }: MarkdownViewProps) {
-  const blocks = useMemo(() => parseMarkdown(text), [text]);
+export function MarkdownView({
+  text,
+  tokens,
+  variant,
+  marks = false,
+  line,
+  onLinePosition,
+}: MarkdownViewProps) {
+  const { blocks, starts } = useMemo(() => {
+    const opened: number[] = [];
+    return { blocks: parseMarkdown(text, opened), starts: opened };
+  }, [text]);
+  // The last block that opened on or before the line holds it.
+  let marked = -1;
+  if (line !== undefined) {
+    for (let at = 0; at < starts.length && starts[at]! <= line - 1; at++) marked = at;
+  }
   const metrics = useMemo(
     () => scaleMetrics(VARIANT_METRICS[variant], tokens.scales.reply, tokens.replySpacing),
     [variant, tokens],
@@ -258,13 +279,24 @@ export function MarkdownView({ text, tokens, variant, marks = false }: MarkdownV
     [styles, tokens, metrics, codeMaxLines],
   );
 
+  const markBlock = (node: React.ReactNode, at: number) => (
+    <View
+      key={`m${at}`}
+      onLayout={(event) => onLinePosition?.(event.nativeEvent.layout.y)}
+      style={{ backgroundColor: tokens.accentBg, borderRadius: radius.block }}
+    >
+      {node}
+    </View>
+  );
+
   // Pictures that follow one another sit in one row that wraps, not one under
   // the other: a reply with several screenshots reads as a strip, not a column.
   const rendered: React.ReactNode[] = [];
   for (let index = 0; index < blocks.length; index++) {
     const block = blocks[index]!;
     if (block.kind !== "image") {
-      rendered.push(renderBlock(block, `b${index}`, index === 0, context));
+      const node = renderBlock(block, `b${index}`, index === 0, context);
+      rendered.push(index === marked ? markBlock(node, index) : node);
       continue;
     }
     const run: Extract<MdBlock, { kind: "image" }>[] = [];
@@ -273,7 +305,7 @@ export function MarkdownView({ text, tokens, variant, marks = false }: MarkdownV
       run.push(next);
       end++;
     }
-    rendered.push(
+    const strip = (
       <View
         key={`b${index}`}
         style={[
@@ -289,8 +321,9 @@ export function MarkdownView({ text, tokens, variant, marks = false }: MarkdownV
             tokens={tokens}
           />
         ))}
-      </View>,
+      </View>
     );
+    rendered.push(marked >= index && marked < end ? markBlock(strip, index) : strip);
     index = end - 1;
   }
 
@@ -300,6 +333,12 @@ export function MarkdownView({ text, tokens, variant, marks = false }: MarkdownV
     </View>
   );
 }
+
+/**
+ * The folder that relative image paths resolve against, when the text is a file
+ * on disk (the side panel) and not a reply. Absolute, or null for a reply.
+ */
+export const ImageBaseContext = createContext<string | null>(null);
 
 /**
  * An image the agent put in its reply. A local file goes through the daemon
@@ -326,7 +365,13 @@ function MarkdownImage({
   const inline = /^data:image\//i.test(src);
   const remote = /^https?:/i.test(src);
   const path = inline || remote ? undefined : fileUrlToPath(src);
-  const local = useImageFile(path, null);
+  const base = useContext(ImageBaseContext);
+  // A relative path in a file means "beside this file", not "beside the agent".
+  const rooted = path !== undefined && /^([a-zA-Z]:[\\/]|[\\/]|~[\\/])/.test(path);
+  const local = useImageFile(
+    path !== undefined && base !== null && !rooted ? `${base}/${path}` : path,
+    null,
+  );
   const loadable = remote && (loadRemoteImages || approved);
   const remoteInfo = useRemoteImageInfo(loadable ? src : undefined);
 
@@ -723,7 +768,9 @@ function inlineText(spans: MdInline[]): string {
  * Shows a path in the file manager. Absent where the host cannot reveal one,
  * which leaves every inline code span as plain text.
  */
-export const RevealPathContext = createContext<((path: string) => void) | null>(null);
+export const RevealPathContext = createContext<((path: string, kind: PathKind) => void) | null>(
+  null,
+);
 
 /**
  * Inline code. When it reads as a file or folder path and a reveal is available,
@@ -733,6 +780,7 @@ export const RevealPathContext = createContext<((path: string) => void) | null>(
  */
 function CodeSpan({ text, style }: { text: string; style: TextStyle }) {
   const reveal = useContext(RevealPathContext);
+  const { pathOpens } = useEnhancerPreferences();
   const kind = reveal ? pathKind(text) : null;
   if (!reveal || !kind) {
     return (
@@ -745,9 +793,9 @@ function CodeSpan({ text, style }: { text: string; style: TextStyle }) {
     <Text
       selectable
       accessibilityRole="link"
-      onPress={() => reveal(text)}
+      onPress={() => reveal(text, kind)}
       style={style}
-      {...pathLinkProps(kind)}
+      {...pathLinkProps(kind, pathOpens === "panel")}
     >
       {text}
     </Text>

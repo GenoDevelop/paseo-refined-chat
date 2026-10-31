@@ -191,15 +191,11 @@ export function plainLinkProps(): TextProps {
  * that says what pressing does. The bubble rides on `data-rchref`, which is
  * what the address bubble reads, so the same rule draws it.
  */
-export function pathLinkProps(kind: "file" | "folder"): TextProps {
+export function pathLinkProps(kind: "file" | "folder", opensPanel: boolean): TextProps {
   if (Platform.OS !== "web") return {};
-  return {
-    dataSet: {
-      rclink: true,
-      rckind: kind,
-      rchref: kind === "file" ? "Show in file manager" : "Open folder",
-    },
-  } as unknown as TextProps;
+  const action =
+    kind === "folder" ? "Open folder" : opensPanel ? "Open in side panel" : "Show in file manager";
+  return { dataSet: { rclink: true, rckind: kind, rchref: action } } as unknown as TextProps;
 }
 
 /** Web-only attributes for one link; the cast is needed because `TextProps` has no `dataSet`. */
