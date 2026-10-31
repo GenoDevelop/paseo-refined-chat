@@ -36,6 +36,8 @@ export interface ExtendedThemeTokens {
 
   /** Per-area font multipliers; 1 = 100%. */
   scales: Readonly<Record<"reply" | "tool" | "code", number>>;
+  /** Line-height multiplier for markdown in replies; 1 = 100%. */
+  replySpacing: number;
   /**
    * Scale typography in the chosen area. Defaults to tool UI for legacy
    * callouts; Markdown uses the reply scale and code surfaces pass "code".
@@ -199,6 +201,7 @@ export function buildThemeTokens(
     fontUi: preferences.uiFont === "system" ? "System" : fontUi,
 
     scales,
+    replySpacing: preferences.replySpacing,
     fs: (base: number, area: "reply" | "tool" | "code" = "tool") =>
       Math.round(base * scales[area] * 100) / 100,
 

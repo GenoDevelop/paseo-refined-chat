@@ -204,11 +204,13 @@ interface RenderContext {
  * sizes: a body drawn a size larger inside the authored gaps reads cramped,
  * and column estimates below already derive from `bodySize`.
  */
-function scaleMetrics(metrics: VariantMetrics, scale: number): VariantMetrics {
-  if (scale === 1) return metrics;
+function scaleMetrics(metrics: VariantMetrics, scale: number, spacing: number): VariantMetrics {
+  if (scale === 1 && spacing === 1) return metrics;
   return {
     bodySize: metrics.bodySize * scale,
-    bodyLineHeight: metrics.bodyLineHeight * scale,
+    // Line spacing multiplies the line height alone: the gaps between blocks
+    // follow the type size, so a looser paragraph does not also move its neighbours.
+    bodyLineHeight: metrics.bodyLineHeight * scale * spacing,
     mono: metrics.mono,
     blockGap: metrics.blockGap * scale,
     headingSizes: metrics.headingSizes.map((size) => size * scale) as [
@@ -235,7 +237,7 @@ function scaleMetrics(metrics: VariantMetrics, scale: number): VariantMetrics {
 export function MarkdownView({ text, tokens, variant }: MarkdownViewProps) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
   const metrics = useMemo(
-    () => scaleMetrics(VARIANT_METRICS[variant], tokens.scales.reply),
+    () => scaleMetrics(VARIANT_METRICS[variant], tokens.scales.reply, tokens.replySpacing),
     [variant, tokens],
   );
   const styles = useMemo(() => buildStyles(tokens, variant, metrics), [tokens, variant, metrics]);
@@ -844,7 +846,7 @@ function buildStyles(
     h1: {
       fontFamily: bodyFont,
       fontSize: size1,
-      lineHeight: size1 * 1.28,
+      lineHeight: size1 * 1.28 * tokens.replySpacing,
       fontWeight: "700",
       letterSpacing: -0.3,
       color: topColor,
@@ -852,7 +854,7 @@ function buildStyles(
     h2: {
       fontFamily: bodyFont,
       fontSize: size2,
-      lineHeight: size2 * 1.3,
+      lineHeight: size2 * 1.3 * tokens.replySpacing,
       fontWeight: "700",
       letterSpacing: -0.15,
       color: tokens.foreground,
@@ -860,14 +862,14 @@ function buildStyles(
     h3: {
       fontFamily: bodyFont,
       fontSize: size3,
-      lineHeight: size3 * 1.35,
+      lineHeight: size3 * 1.35 * tokens.replySpacing,
       fontWeight: "600",
       color: tokens.foreground,
     },
     h4: {
       fontFamily: bodyFont,
       fontSize: size4,
-      lineHeight: size4 * 1.4,
+      lineHeight: size4 * 1.4 * tokens.replySpacing,
       fontWeight: "600",
       letterSpacing: 0.7,
       textTransform: "uppercase",

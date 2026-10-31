@@ -22,6 +22,15 @@ export function sanitizeTypographyScale(value: unknown, fallback = 1): number {
   return Math.max(TYPOGRAPHY_SCALE_MIN, Math.min(TYPOGRAPHY_SCALE_MAX, value));
 }
 
+/** Line spacing of replies; below 80% lines touch, above 200% a paragraph falls apart. */
+export const LINE_SPACING_MIN = 0.8;
+export const LINE_SPACING_MAX = 2;
+
+export function sanitizeLineSpacing(value: unknown, fallback = 1): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(LINE_SPACING_MIN, Math.min(LINE_SPACING_MAX, value));
+}
+
 /** Zero turns folding off; the top bound only keeps a typo from being absurd. */
 export const LINE_LIMIT_MAX = 10_000;
 
@@ -38,6 +47,8 @@ export interface EnhancerPreferences {
   replyScale: number;
   toolScale: number;
   codeScale: number;
+  /** Multiplies the line height of assistant replies; 1 = 100%. Type size is `replyScale`. */
+  replySpacing: number;
   /**
    * Lines of command output shown before the middle folds away, leaving the
    * start and the end. Zero shows all of it.
@@ -103,6 +114,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   replyScale: 1,
   toolScale: 1,
   codeScale: 1,
+  replySpacing: 1,
   shellMaxLines: 20,
   codeMaxLines: 30,
   loadRemoteImages: false,
@@ -141,6 +153,7 @@ function loadPreferences(): EnhancerPreferences {
       replyScale: sanitizeTypographyScale(candidate.replyScale),
       toolScale: sanitizeTypographyScale(candidate.toolScale),
       codeScale: sanitizeTypographyScale(candidate.codeScale),
+      replySpacing: sanitizeLineSpacing(candidate.replySpacing),
       shellMaxLines: sanitizeLineLimit(candidate.shellMaxLines, DEFAULT_PREFERENCES.shellMaxLines),
       codeMaxLines: sanitizeLineLimit(candidate.codeMaxLines, DEFAULT_PREFERENCES.codeMaxLines),
       // Only an explicit `true` counts: anything else stays the safe default.

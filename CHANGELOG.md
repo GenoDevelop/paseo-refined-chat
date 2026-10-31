@@ -6,6 +6,7 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 ## [Unreleased]
 
 ### Added
+- "Reply line spacing": a percentage (80% to 200%, default 100%) that sets the height of each line in assistant replies, apart from the text size. Body text, lists, tables and headings follow it; the gaps between blocks, tool cards and code do not.
 - "Let Paseo fold tool calls and turns" (off by default). Paseo's Chat display can fold tool calls into one row, or a whole turn into its reply, but only for rows it draws itself, and this plugin replaces them with its own. With the setting on and Chat display set to Collapse tool calls, tool calls and reasoning are left to Paseo; with Collapse turns, prompts and replies are too. Rows are drawn once when they load, so after changing either setting reload the plugin or restart the app.
 
 ## [0.3.0] - 2026-10-31
