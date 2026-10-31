@@ -44,9 +44,7 @@ too. Requires **Paseo 0.11.0 or later**. Everything below is configured in
 
 ## Settings
 
-![The Refined Chat settings screen with its sections](docs/images/settings.png)
-
-<!-- SCREENSHOT settings: see the screenshot list in the pull request. -->
+![The settings page: Appearance open with a custom bold colour, Replies and prompts collapsed, Tool card folding open](docs/images/settings.png)
 
 The settings page is grouped into collapsible sections; a section remembers whether you left it open.
 A setting that depends on another dims when it cannot apply, and says why.
@@ -68,8 +66,6 @@ a deeper step of the same name so they stay readable. **Custom** opens a strip o
 field, and each setting remembers its own custom colour when you switch to a preset and back.
 
 ![Picking a custom colour: the palette, the Custom chip, the hue strip and the hex field](docs/images/colours.png)
-
-<!-- SCREENSHOT colours: see the screenshot list in the pull request. -->
 
 ### Text size and spacing
 
