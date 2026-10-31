@@ -36,20 +36,17 @@ them.
 ## Install
 
 Before the plugin is approved in the Paseo catalog, install directly
-from the public GitHub repository (this works without a release tag):
+from the public GitHub repository, which follows `main`:
 
 ```bash
 paseo plugin add git:GenoDevelop/refined-chat
 ```
 
-After the `v0.2.0` tag is published, you can pin the initial installation to
-that release instead:
+To stay on a published release instead, pin it to its tag:
 
 ```bash
-paseo plugin add git:GenoDevelop/refined-chat --ref v0.2.0
+paseo plugin add git:GenoDevelop/refined-chat --ref v0.3.0
 ```
-
-The tagged command will not work until the tag exists.
 
 After registry approval, the shorter catalog command becomes available:
 

@@ -17,7 +17,7 @@ git status --short
 ```
 
 The working tree should be clean. Confirm that `package.json` and the root
-`package-lock.json` both declare `0.2.0`, and that `paseo-plugin.json`
+`package-lock.json` both declare the release version, and that `paseo-plugin.json`
 declares ID `refined-chat` with a compatible Paseo minimum.
 
 ## 2. Check locally (no hosted runner minutes)
@@ -70,21 +70,23 @@ correspond to the version being reviewed.
 ## 4. Tag and publish GitHub Release
 
 From the verified `main` commit, use GitHub's **Releases → Draft a new
-release** interface. Create tag `v0.2.0` targeting `main`, title the
-release `Refined Chat v0.2.0`, include highlights from `CHANGELOG.md`,
-and publish. If a new screenshot was needed, merge that update first.
+release** interface (or `gh release create`). Create tag `vX.Y.Z` targeting
+`main`, title the release `Refined Chat vX.Y.Z`, include highlights from
+`CHANGELOG.md`, and publish. If a new screenshot was needed, merge that update first.
 
 Do not create a workflow or an automatic release pipeline.
 
 ## 5. Test the tagged GitHub source
 
 ```powershell
-paseo plugin add git:GenoDevelop/refined-chat --ref v0.2.0 --id refined-chat-tag-test
+paseo plugin add git:GenoDevelop/refined-chat --ref vX.Y.Z --id refined-chat-tag-test
 paseo plugin ls refined-chat-tag-test
 ```
 
-Only after the tag has been published should a pinned `--ref v0.2.0`
-installation be expected to work.
+Only after the tag has been published should a pinned `--ref vX.Y.Z`
+installation be expected to work. Better still, run the same install against
+`main` (without `--ref`) **before** tagging, so a broken install is found while
+the release can still be changed.
 
 ## 6. Submit to the Paseo catalog
 

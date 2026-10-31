@@ -5,6 +5,8 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-31
+
 ### Added
 - Images in assistant replies: a paragraph holding only `![alt](src)` is drawn as the picture instead of an "Image" link: a small thumbnail with no frame, several in a row, with the description, size and weight shown over it on hover. Local files (`file://`) load through the daemon and `data:` images as they are. A remote `http(s)` image is a tile of the same size that names the server and waits for a "Load" click; the setting "Load remote images automatically (at your own risk)" lifts that, and is off by default because the agent writes the address. Pixel size and, where the server allows it, weight are read after a remote image loads.
 - Pictures and image cards open in a viewer on click: never larger than the image's own size, the wheel zooms around the pointer, a drag moves it, two fingers pinch and move it on a touch screen, and buttons give zoom, 1:1 and fit. Esc, the close button or a click on the backdrop closes it.
