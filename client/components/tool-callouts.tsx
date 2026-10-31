@@ -157,13 +157,16 @@ export function ToolCallout({
   // An edit's header carries how much it changed, so a collapsed card still
   // says whether it touched one line or fifty.
   // A write is all additions, so its header says how long the new file is.
+  // A failed call changed nothing, so it claims no change: its diff is what
+  // the agent tried, and counting it would read as an edit that landed.
   const diffStat = useMemo(() => {
+    if (isFailed) return undefined;
     if (data.tool === "edit" && data.diff) return countDiffLines(data.diff);
     if (data.tool === "write" && data.code && !isImagePath(data.filePath)) {
       return { added: countLines(data.code), removed: 0 };
     }
     return undefined;
-  }, [data.tool, data.diff, data.code, data.filePath]);
+  }, [isFailed, data.tool, data.diff, data.code, data.filePath]);
 
   // A read's header says how many lines came back. An image read has no lines
   // to count, and a read still streaming would show a number that keeps moving.
@@ -899,6 +902,19 @@ export function ToolCallout({
                 compact
               />
             ))}
+
+          {data.tool === "edit" && isFailed && (
+            <Text
+              selectable
+              style={{
+                fontFamily: tokens.fontUi,
+                fontSize: tokens.fs(11),
+                color: tokens.foregroundMuted,
+              }}
+            >
+              Not applied: the call failed, so this is the change that was attempted.
+            </Text>
+          )}
 
           {data.tool === "edit" && (
             <SyntaxHighlightBlock
