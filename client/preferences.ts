@@ -56,6 +56,8 @@ export interface EnhancerPreferences {
   shellMaxLines: number;
   /** Lines of code, file reads and diffs shown before the rest folds. Zero shows all. */
   codeMaxLines: number;
+  /** Lines of a prompt shown before the rest folds. Zero shows all. */
+  promptMaxLines: number;
   /**
    * Draws an `http(s)` image a reply links without waiting for a click. The
    * agent writes the address, so a prompt injection can use it to send data off
@@ -117,6 +119,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   replySpacing: 1,
   shellMaxLines: 20,
   codeMaxLines: 30,
+  promptMaxLines: 15,
   loadRemoteImages: false,
   frostedGlass: true,
   pointerGlow: true,
@@ -156,6 +159,10 @@ function loadPreferences(): EnhancerPreferences {
       replySpacing: sanitizeLineSpacing(candidate.replySpacing),
       shellMaxLines: sanitizeLineLimit(candidate.shellMaxLines, DEFAULT_PREFERENCES.shellMaxLines),
       codeMaxLines: sanitizeLineLimit(candidate.codeMaxLines, DEFAULT_PREFERENCES.codeMaxLines),
+      promptMaxLines: sanitizeLineLimit(
+        candidate.promptMaxLines,
+        DEFAULT_PREFERENCES.promptMaxLines,
+      ),
       // Only an explicit `true` counts: anything else stays the safe default.
       loadRemoteImages: candidate.loadRemoteImages === true,
       frostedGlass:
