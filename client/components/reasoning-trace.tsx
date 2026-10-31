@@ -370,9 +370,11 @@ export function ReasoningTrace({
                     ) : null}
                   </Pressable>
 
-                  <Text selectable style={styles.stepContent}>
-                    {step.content}
-                  </Text>
+                  {step.content ? (
+                    <Text selectable style={styles.stepContent}>
+                      {step.content}
+                    </Text>
+                  ) : null}
 
                   {step.codeSnippet && isDetailOpen && (
                     <SyntaxHighlightBlock

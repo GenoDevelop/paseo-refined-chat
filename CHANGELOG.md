@@ -5,6 +5,9 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 
 ## [Unreleased]
 
+### Fixed
+- A Codex reasoning summary draws as one step per heading (`1. Checking current query state`) instead of one block of `**…****…**` text. Codex sends its headings with no blank line between them and then sends them all again as the finished summary, so a heading that touches another, or sits on the next line, starts a new step, and a heading already shown is not drawn twice. A bold line on its own titles the paragraph after it. Plain reasoning text, such as Claude's, is split as before.
+
 ## [0.5.0] - 2026-11-01
 
 ### Added

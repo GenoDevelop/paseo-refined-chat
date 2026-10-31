@@ -764,20 +764,44 @@ export function LiveReasoningRenderer({
 
   const reasoningData: ReasoningTraceData = useMemo(() => {
     const rawText = revealed;
-    // Split into paragraphs or steps if separated
-    const paragraphs = rawText.split("\n\n").filter(Boolean);
+    // Split into paragraphs or steps if separated. Codex sends its summary
+    // headings back to back with no blank line (`**A****B**`), then once more
+    // as the finished summary, one per line (`**A**\n**B**`). A closing and an
+    // opening bold marker that touch, or sit on adjacent lines, end a paragraph.
+    const paragraphs = rawText.replace(/\*\*\n?\*\*/g, "**\n\n**").split("\n\n").filter(Boolean);
+    const seen = new Set<string>();
     // No fabricated title: slicing the first 60 characters of the body cut
-    // words in half and then repeated the same text underneath.
+    // words in half and then repeated the same text underneath. A paragraph
+    // that is only a bold line is the provider's own heading, so it titles
+    // the paragraph after it.
     // The final paragraph is the one still being written, so it reads as
     // active while streaming. That is what advances the timeline rail one
     // tick at a time instead of lighting the whole thing up at once.
     const streaming = data.phase === "streaming";
-    const steps = paragraphs.map((p, idx) => ({
+    const blocks: { title?: string; content: string }[] = [];
+    let heading: string | undefined;
+    for (const p of paragraphs) {
+      const bold = /^\*\*([^*\n]+)\*\*$/.exec(p.trim());
+      if (bold) {
+        // The finished summary repeats the headings that streamed before it.
+        const title = bold[1]?.trim() ?? "";
+        if (seen.has(title)) continue;
+        seen.add(title);
+        if (heading !== undefined) blocks.push({ title: heading, content: "" });
+        heading = bold[1]?.trim();
+      } else {
+        blocks.push({ title: heading, content: p });
+        heading = undefined;
+      }
+    }
+    if (heading !== undefined) blocks.push({ title: heading, content: "" });
+    const steps = blocks.map((block, idx) => ({
       id: `live-step-${idx}`,
       number: idx + 1,
       status:
-        streaming && idx === paragraphs.length - 1 ? ("active" as const) : ("completed" as const),
-      content: p,
+        streaming && idx === blocks.length - 1 ? ("active" as const) : ("completed" as const),
+      ...(block.title ? { title: block.title } : {}),
+      content: block.content,
     }));
 
     return {
