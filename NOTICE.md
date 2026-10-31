@@ -40,3 +40,4 @@ credited to their authors and ported by hand:
 - Edit diff computed from old and new text: [PR #8](https://github.com/ABorakati/beautiful-chat/pull/8) by **Moyf**. The diff builder is used as written; line numbers, line statistics and in-line highlighting are original to Refined Chat.
 - Custom colours for accent and bold text: [PR #7](https://github.com/ABorakati/beautiful-chat/pull/7) by **Moyf**, adapted (one shared palette, switches, light-theme steps).
 - Highlight marks (`==text==`): [PR #6](https://github.com/ABorakati/beautiful-chat/pull/6) by **Moyf**, adapted (off by default). Its clickable file paths were not taken.
+- Code font setting that follows Paseo's Code font: [PR #13](https://github.com/ABorakati/beautiful-chat/pull/13) by **gringolito**, adapted (Iosevka stays the default; Paseo's Code size is not read).
