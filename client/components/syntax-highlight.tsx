@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
+import { copyText } from "@getpaseo/plugin/client/react-native";
 import { LINK_UNDERLINE, plainLinkProps } from "./markdown/link-style";
 import { Glyph } from "./glyph";
 import { frosted } from "./frosted";
@@ -491,12 +492,16 @@ export function SyntaxHighlightBlock({
 }: SyntaxHighlightProps) {
   const [copied, setCopied] = useState(false);
 
+  // The host clipboard works on every platform; `navigator.clipboard` is
+  // missing on native. "Copied" shows only once the copy has gone through.
   const handleCopy = useCallback(() => {
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(code).catch(() => {});
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    copyText(code).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+      },
+      () => {},
+    );
   }, [code]);
 
   const lines = useMemo(() => code.trimEnd().split("\n"), [code]);
