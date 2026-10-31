@@ -536,6 +536,8 @@ export default function contribute(server: PluginServerContext) {
     if (!requested || needle.trim() === "") return { line: null };
 
     const target = isAbsolute(requested) ? requested : resolve(input.cwd, requested);
+    // Before any lookup: `stat` on a network path contacts that host.
+    if (isNetworkPath(target)) return { line: null };
     try {
       const entry = await stat(target);
       if (!entry.isFile() || entry.size > MAX_LOCATE_BYTES) return { line: null };
@@ -568,6 +570,8 @@ export default function contribute(server: PluginServerContext) {
     if (!mime) return { ...empty, error: `Not an image: .${kind}` };
 
     const target = isAbsolute(requested) ? requested : resolve(input.cwd, requested);
+    // Before any lookup: `stat` on a network path contacts that host.
+    if (isNetworkPath(target)) return { ...empty, error: "Network paths are not read" };
     let handle: FileHandle | null = null;
     try {
       const entry = await stat(target);

@@ -253,7 +253,7 @@ when a card or a pressed path needs it:
 | Side panel (`file.read`) | The text of the file you pressed, up to 1 MB, only inside the agent's working directory unless you turn on **Preview files outside the project**. The text goes to your own panel. |
 
 Image previews, edit line numbers, `file.reveal` and `file.kind` are not limited to the agent's
-working directory; `file.read` is, by default. `file.reveal`, `file.kind` and `file.read` refuse a
+working directory; `file.read` is, by default. Every call that takes a path from a reply refuses a
 network path (`\\host\share`) before any lookup. A remote image in a reply is not fetched until you
 press **Load**, unless you turn on automatic loading.
 
