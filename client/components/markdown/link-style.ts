@@ -136,10 +136,26 @@ export function linkKind(href: string): LinkKind {
   return host === "github.com" || host?.endsWith(".github.com") ? "github" : "web";
 }
 
+/**
+ * A file name such as `tool-collapse.ts` has the shape of an address, and some
+ * of these extensions are real country domains. A bare label with one of them is
+ * read as a file, not as a claim about a site, so it is not compared with the
+ * target.
+ */
+const FILE_EXTENSIONS = new Set([
+  "ts", "tsx", "js", "jsx", "mjs", "cjs", "json", "md", "mdx", "py", "rs", "sh", "yml", "yaml",
+  "toml", "txt", "css", "scss", "html", "xml", "lock", "log", "cs", "rb", "php", "java", "kt",
+  "swift", "c", "h", "cpp", "sql", "env", "cfg", "ini",
+]);
+
 /** True when the label reads as an address of its own that the target does not match. */
 function labelMisleads(label: string, href: string): boolean {
   const text = label.trim();
   if (!/^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(text)) return false;
+  if (!/^https?:/i.test(text)) {
+    const extension = text.split("/")[0]!.split(".").pop()!.toLowerCase();
+    if (FILE_EXTENSIONS.has(extension)) return false;
+  }
   const shown = hostname(/^https?:/i.test(text) ? text : `https://${text}`);
   const target = hostname(href);
   return Boolean(shown && target && shown !== target && !target.endsWith(`.${shown}`));
