@@ -108,6 +108,12 @@ const DIMENSIONS = {
   lg: { box: 21 },
 } as const;
 
+/**
+ * Marks drawn in black or near black, which vanish on a dark surface. They take
+ * the text colour instead of the vendor's, so they read on both themes.
+ */
+const FOREGROUND_TINTED: ReadonlySet<SupportedFileType> = new Set(["markdown", "bash", "rust"]);
+
 function isDirectoryPath(filename?: string): boolean {
   const path = filename?.trim();
   return (
@@ -135,7 +141,7 @@ export function FileTypeLogo({
       <Image
         source={{ uri: brand }}
         style={
-          type === "markdown" && foregroundColor
+          FOREGROUND_TINTED.has(type) && foregroundColor
             ? { width: box, height: box, tintColor: foregroundColor }
             : { width: box, height: box }
         }
