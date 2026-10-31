@@ -17,6 +17,7 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 ### Changed
 - The size of an edit, write or read (`+X −Y`, `N lines`, `lines A–B`) moved from beside the title to the right of the header, with the new command summary, so every card keeps its measurements in one place and a long file path no longer pushes them out.
 - "Cards to collapse when finished" replaces the "Auto-collapse tools" switch (no kind selected means no folding), and "Cards that start collapsed" replaces "Collapse thinking" and covers tool cards too. Saved settings carry over: switch on selects every kind, "Collapse thinking" on selects Thinking.
+- The settings page is grouped into collapsible sections (Appearance, Text size and spacing, Replies and prompts, Tool card folding, Long content, Advanced), with the open state remembered on the client. Each fold limit is now a switch with a number field that appears when it is on, instead of a number where 0 means off; saved values carry over. "Collapse length" became "Only fold longer cards". A kind chosen in "Cards that start collapsed" is dimmed in "Cards to collapse when finished", and the length limit dims when no kind is left to fold.
 
 ## [0.3.0] - 2026-10-31
 

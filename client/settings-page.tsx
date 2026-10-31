@@ -3,6 +3,7 @@ import { Animated, Platform, Pressable, StyleSheet, Text, TextInput, View } from
 import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
 import { COLLAPSE_KINDS, COLLAPSE_KIND_LABELS } from "./tool-collapse";
 import type { CollapseKind } from "./tool-collapse";
+import { Glyph } from "./components/glyph";
 import { hostFontEscape } from "./components/host-font-escape";
 import { radius, buildThemeTokens, type ExtendedThemeTokens } from "./components/theme-tokens";
 import {
@@ -138,21 +139,25 @@ function ToggleRow({
 function OptionButton({
   label,
   selected,
+  disabled = false,
   onPress,
   tokens,
 }: {
   label: string;
   selected: boolean;
+  disabled?: boolean;
   onPress(): void;
   tokens: ExtendedThemeTokens;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityState={{ selected, disabled }}
+      disabled={disabled}
       onPress={onPress}
       style={[
         styles.option,
+        disabled && styles.dimmed,
         {
           backgroundColor: selected ? tokens.accentBg : tokens.surface2,
           borderColor: selected ? tokens.accent : tokens.borderSubtle,
@@ -220,6 +225,8 @@ function MultiChoiceRow<T extends string>({
   description,
   value,
   options,
+  lockedValues = [],
+  lockedHint,
   onChange,
   tokens,
 }: {
@@ -227,6 +234,9 @@ function MultiChoiceRow<T extends string>({
   description: string;
   value: readonly T[];
   options: ReadonlyArray<{ value: T; label: string }>;
+  /** Choices another setting already settles: shown dimmed and not selectable. */
+  lockedValues?: readonly T[];
+  lockedHint?: string;
   onChange(value: T[]): void;
   tokens: ExtendedThemeTokens;
 }) {
@@ -251,6 +261,7 @@ function MultiChoiceRow<T extends string>({
               key={option.value}
               label={option.label}
               selected={selected}
+              disabled={lockedValues.includes(option.value)}
               onPress={() =>
                 onChange(
                   options
@@ -265,6 +276,16 @@ function MultiChoiceRow<T extends string>({
           );
         })}
       </View>
+      {lockedHint && lockedValues.length > 0 ? (
+        <Text
+          style={[
+            styles.rowDescription,
+            { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
+          ]}
+        >
+          {lockedHint}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -364,22 +385,35 @@ function PercentageRow({
   );
 }
 
-/** A whole-number field: lines shown before long output folds, zero for never. */
-function LineLimitRow({
+/**
+ * A limit that can be switched off. Off is stored as zero, so saved settings
+ * keep their meaning; switching on again restores the last number used.
+ */
+function LimitRow({
   title,
   description,
   value,
+  fallback,
+  unit = "lines",
+  disabled = false,
   onChange,
   tokens,
 }: {
   title: string;
   description: string;
   value: number;
+  /** The number a switch-on uses when none was set this session. */
+  fallback: number;
+  unit?: string;
+  /** Dimmed and inert when another setting makes this one moot. */
+  disabled?: boolean;
   onChange(value: number): void;
   tokens: ExtendedThemeTokens;
 }) {
   const [draft, setDraft] = useState(() => String(value));
   const [invalid, setInvalid] = useState(false);
+  const lastOn = useRef(value > 0 ? value : fallback);
+  if (value > 0) lastOn.current = value;
 
   useEffect(() => {
     setDraft(String(value));
@@ -389,7 +423,7 @@ function LineLimitRow({
   function commit() {
     const input = draft.trim();
     const lines = input ? Number(input) : NaN;
-    if (!Number.isInteger(lines) || lines < 0 || lines > LINE_LIMIT_MAX) {
+    if (!Number.isInteger(lines) || lines < 1 || lines > LINE_LIMIT_MAX) {
       setInvalid(true);
       return;
     }
@@ -398,52 +432,152 @@ function LineLimitRow({
     if (lines !== value) onChange(lines);
   }
 
+  const on = value > 0;
   return (
-    <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
-      <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.rowDescription,
-          { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
-        ]}
-      >
-        {description}
-      </Text>
-      <View style={styles.percentInputRow}>
-        <TextInput
-          value={draft}
-          onChangeText={(next) => {
-            setDraft(next);
-            setInvalid(false);
-          }}
-          onBlur={commit}
-          onSubmitEditing={commit}
-          accessibilityLabel={title}
-          accessibilityHint="Enter a number of lines and press Enter to apply"
-          keyboardType="number-pad"
-          returnKeyType="done"
-          maxLength={5}
-          style={[
-            styles.percentInput,
-            {
-              color: tokens.foreground,
-              backgroundColor: tokens.surface2,
-              borderColor: invalid ? tokens.danger : tokens.border,
-              fontFamily: tokens.fontUi,
-            },
-          ]}
+    <View
+      style={[styles.row, { borderTopColor: tokens.borderSubtle }, disabled && styles.dimmed]}
+      pointerEvents={disabled ? "none" : "auto"}
+    >
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleText}>
+          <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+            {title}
+          </Text>
+          <Text
+            style={[
+              styles.rowDescription,
+              { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
+            ]}
+          >
+            {description}
+          </Text>
+        </View>
+        <Toggle
+          value={on}
+          onChange={(next) => onChange(next ? lastOn.current : 0)}
+          label={title}
+          tokens={tokens}
         />
-        <Text style={[styles.percentUnit, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
-          lines
-        </Text>
       </View>
+      {on ? (
+        <View style={styles.percentInputRow}>
+          <TextInput
+            value={draft}
+            onChangeText={(next) => {
+              setDraft(next);
+              setInvalid(false);
+            }}
+            onBlur={commit}
+            onSubmitEditing={commit}
+            accessibilityLabel={`${title}: number of ${unit}`}
+            accessibilityHint={`Enter a number of ${unit} and press Enter to apply`}
+            keyboardType="number-pad"
+            returnKeyType="done"
+            maxLength={5}
+            editable={!disabled}
+            style={[
+              styles.percentInput,
+              {
+                color: tokens.foreground,
+                backgroundColor: tokens.surface2,
+                borderColor: invalid ? tokens.danger : tokens.border,
+                fontFamily: tokens.fontUi,
+              },
+            ]}
+          />
+          <Text style={[styles.percentUnit, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+            {unit}
+          </Text>
+        </View>
+      ) : null}
       {invalid ? (
         <Text style={[styles.rowDescription, { color: tokens.danger }]}>
-          Enter a whole number from 0 to {LINE_LIMIT_MAX}.
+          Enter a whole number from 1 to {LINE_LIMIT_MAX}.
         </Text>
       ) : null}
+    </View>
+  );
+}
+
+const SECTIONS_KEY = "paseo/refined-chat/settings-sections/v1";
+
+function readSectionState(): Record<string, boolean> {
+  try {
+    const stored = (globalThis as { localStorage?: Storage }).localStorage?.getItem(SECTIONS_KEY);
+    const parsed: unknown = stored ? JSON.parse(stored) : {};
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, boolean>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * A titled group of settings that folds. Whether it is open is remembered on
+ * this client, apart from the settings themselves, so Reset defaults does not
+ * rearrange the page.
+ */
+function Section({
+  id,
+  title,
+  description,
+  defaultOpen,
+  tokens,
+  children,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  defaultOpen: boolean;
+  tokens: ExtendedThemeTokens;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(() => readSectionState()[id] ?? defaultOpen);
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    try {
+      (globalThis as { localStorage?: Storage }).localStorage?.setItem(
+        SECTIONS_KEY,
+        JSON.stringify({ ...readSectionState(), [id]: next }),
+      );
+    } catch {
+      // Storage can be disabled: the section still folds for this session.
+    }
+  }
+
+  return (
+    <View
+      style={[
+        styles.card,
+        { borderColor: tokens.borderSubtle, backgroundColor: tokens.surfaceGlass },
+      ]}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`${title}, ${open ? "collapse" : "expand"}`}
+        onPress={toggle}
+        style={styles.sectionHeader}
+      >
+        <View style={styles.sectionText}>
+          <Text
+            style={[styles.sectionTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}
+          >
+            {title}
+          </Text>
+          <Text
+            style={[
+              styles.rowDescription,
+              { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
+            ]}
+          >
+            {description}
+          </Text>
+        </View>
+        <Glyph name={open ? "ChevronUp" : "ChevronDown"} size={16} color={tokens.foregroundMuted} />
+      </Pressable>
+      {open ? children : null}
     </View>
   );
 }
@@ -475,13 +609,14 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         </Text>
       </View>
 
-      <View
-        style={[
-          styles.card,
-          { borderColor: tokens.borderSubtle, backgroundColor: tokens.surfaceGlass },
-        ]}
+      <Section
+        id="appearance"
+        title="Appearance"
+        description="Colour, fonts and surfaces."
+        defaultOpen={true}
+        tokens={tokens}
       >
-        <View style={styles.row}>
+        <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
           <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
             Accent colour
           </Text>
@@ -554,6 +689,29 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           tokens={tokens}
         />
 
+        <ToggleRow
+          title="Frosted glass"
+          description="Blur surfaces where the host supports it, or use solid surfaces instead."
+          value={preferences.frostedGlass}
+          onChange={(frostedGlass) => updateEnhancerPreferences({ frostedGlass })}
+          tokens={tokens}
+        />
+
+        <ToggleRow
+          title="Pointer glow"
+          description="A soft light follows the pointer across each card. Desktop and web only: touch platforms have no hover, and the light is skipped when the system asks for reduced motion."
+          value={preferences.pointerGlow}
+          onChange={(pointerGlow) => updateEnhancerPreferences({ pointerGlow })}
+          tokens={tokens}
+        />
+      </Section>
+      <Section
+        id="sizes"
+        title="Text size and spacing"
+        description="How large text is drawn, as a percentage of the default."
+        defaultOpen={true}
+        tokens={tokens}
+      >
         <PercentageRow
           title="Assistant replies"
           description="Body text, headings, lists and spacing in markdown. Enter any percent, e.g. 127.5."
@@ -587,105 +745,14 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           onChange={(codeScale) => updateEnhancerPreferences({ codeScale })}
           tokens={tokens}
         />
-
-        <LineLimitRow
-          title="Long terminal output"
-          description="Text results (command output, errors, eval output, GitHub replies) past this many lines keep their start and their end and fold the middle. 0 never folds."
-          value={preferences.shellMaxLines}
-          onChange={(shellMaxLines) => updateEnhancerPreferences({ shellMaxLines })}
-          tokens={tokens}
-        />
-
-        <LineLimitRow
-          title="Long code and diffs"
-          description="File reads, writes, diffs, structured data (MCP, GitHub, eval code) and code blocks in replies past this many lines show the first lines and fold the rest. 0 never folds."
-          value={preferences.codeMaxLines}
-          onChange={(codeMaxLines) => updateEnhancerPreferences({ codeMaxLines })}
-          tokens={tokens}
-        />
-
-        <LineLimitRow
-          title="Long prompts"
-          description="A prompt you wrote past this many lines shows its first lines and folds the rest, in this plugin's prompt bubble only. A long paragraph with no line breaks counts by about 70 characters a line. 0 never folds."
-          value={preferences.promptMaxLines}
-          onChange={(promptMaxLines) => updateEnhancerPreferences({ promptMaxLines })}
-          tokens={tokens}
-        />
-
-        <ToggleRow
-          title="Load remote images automatically (at your own risk)"
-          description="Off: an image an agent links over http(s) waits behind a Load button that names the server. On: it loads without asking. The agent writes the address, so a prompt injection can make your machine request a URL that carries data from the chat, and the server sees your IP address. Turn this on only if you accept that."
-          value={preferences.loadRemoteImages}
-          onChange={(loadRemoteImages) => updateEnhancerPreferences({ loadRemoteImages })}
-          tokens={tokens}
-        />
-
-        <MultiChoiceRow<CollapseKind>
-          title="Cards to collapse when finished"
-          description="Cards that fold back up once they finish; none turns folding off. A failed call and an ask card stay open, and a card you opened or closed yourself keeps its state. Thinking stays open while it streams, then folds."
-          value={preferences.autoCollapseKinds}
-          options={COLLAPSE_KINDS.map((kind) => ({ value: kind, label: COLLAPSE_KIND_LABELS[kind] }))}
-          onChange={(autoCollapseKinds) => updateEnhancerPreferences({ autoCollapseKinds })}
-          tokens={tokens}
-        />
-
-        <LineLimitRow
-          title="Collapse length"
-          description="Folding on finish leaves a tool card open while its output, code and diff total fewer lines than this. 0 folds every card."
-          value={preferences.autoCollapseMinLines}
-          onChange={(autoCollapseMinLines) => updateEnhancerPreferences({ autoCollapseMinLines })}
-          tokens={tokens}
-        />
-
-        <MultiChoiceRow<CollapseKind>
-          title="Cards that start collapsed"
-          description="Drawn folded from the start, even while still running, and open to read. Independent of folding on finish. A failed call stays folded too; its exit code and status show in the header."
-          value={preferences.startCollapsedKinds}
-          options={COLLAPSE_KINDS.map((kind) => ({ value: kind, label: COLLAPSE_KIND_LABELS[kind] }))}
-          onChange={(startCollapsedKinds) => updateEnhancerPreferences({ startCollapsedKinds })}
-          tokens={tokens}
-        />
-
-        <ToggleRow
-          title="Let Paseo fold tool calls and turns"
-          description="Only acts when Paseo's Chat display is Collapse tool calls or Collapse turns. Paseo can fold only its own rows, so with this on, tool calls and reasoning (and, for Collapse turns, prompts and replies, which then ignore the reply size and spacing set here) are drawn by Paseo instead of this plugin. Off keeps this plugin's cards in every mode, and Paseo does not fold them. Rows are drawn once when they load, so after changing this or Paseo's Chat display, reload the plugin or restart the app."
-          value={preferences.yieldToHostFolding}
-          onChange={(yieldToHostFolding) => updateEnhancerPreferences({ yieldToHostFolding })}
-          tokens={tokens}
-        />
-
-        <ToggleRow
-          title="Frosted glass"
-          description="Blur surfaces where the host supports it, or use solid surfaces instead."
-          value={preferences.frostedGlass}
-          onChange={(frostedGlass) => updateEnhancerPreferences({ frostedGlass })}
-          tokens={tokens}
-        />
-
-        <ToggleRow
-          title="Pointer glow"
-          description="A soft light follows the pointer across each card. Desktop and web only: touch platforms have no hover, and the light is skipped when the system asks for reduced motion."
-          value={preferences.pointerGlow}
-          onChange={(pointerGlow) => updateEnhancerPreferences({ pointerGlow })}
-          tokens={tokens}
-        />
-
-        <ToggleRow
-          title="Enhanced prompt bubble"
-          description="Paseo removes pasted images before a plugin sees the message, so the enhanced bubble cannot show them. Turn this off for Paseo's own bubble with image previews. New prompts follow the change."
-          value={preferences.enhancedUserBubble}
-          onChange={(enhancedUserBubble) => updateEnhancerPreferences({ enhancedUserBubble })}
-          tokens={tokens}
-        />
-
-        <ToggleRow
-          title="Selection actions"
-          description="Highlighting text in a callout raises a small bar with Copy and Add to chat. Add to chat drops the highlight into the composer as a quote, or a fenced block when it came from code. Desktop and web only: iOS and Android use the platform's own selection menu."
-          value={preferences.selectionActions}
-          onChange={(selectionActions) => updateEnhancerPreferences({ selectionActions })}
-          tokens={tokens}
-        />
-
+      </Section>
+      <Section
+        id="replies"
+        title="Replies and prompts"
+        description="How your prompts and the assistant's answers are drawn."
+        defaultOpen={true}
+        tokens={tokens}
+      >
         <ToggleRow
           title="Assistant markdown"
           description="Draws the reply with the plugin's own headings, lists and syntax-highlighted code blocks. The plugin cannot reach Paseo's markdown pipeline, so its version is a subset: turn this off for mermaid diagrams, images, and the host's file-path links."
@@ -706,7 +773,119 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           onChange={(markdownVariant) => updateEnhancerPreferences({ markdownVariant })}
           tokens={tokens}
         />
-      </View>
+
+        <ToggleRow
+          title="Enhanced prompt bubble"
+          description="Paseo removes pasted images before a plugin sees the message, so the enhanced bubble cannot show them. Turn this off for Paseo's own bubble with image previews. New prompts follow the change."
+          value={preferences.enhancedUserBubble}
+          onChange={(enhancedUserBubble) => updateEnhancerPreferences({ enhancedUserBubble })}
+          tokens={tokens}
+        />
+
+        <ToggleRow
+          title="Selection actions"
+          description="Highlighting text in a callout raises a small bar with Copy and Add to chat. Add to chat drops the highlight into the composer as a quote, or a fenced block when it came from code. Desktop and web only: iOS and Android use the platform's own selection menu."
+          value={preferences.selectionActions}
+          onChange={(selectionActions) => updateEnhancerPreferences({ selectionActions })}
+          tokens={tokens}
+        />
+      </Section>
+      <Section
+        id="tools"
+        title="Tool card folding"
+        description="Which cards fold, and when."
+        defaultOpen={true}
+        tokens={tokens}
+      >
+        <MultiChoiceRow<CollapseKind>
+          title="Cards that start collapsed"
+          description="Drawn folded from the start, even while still running, and open to read. Independent of folding on finish. A failed call stays folded too; its exit code and status show in the header."
+          value={preferences.startCollapsedKinds}
+          options={COLLAPSE_KINDS.map((kind) => ({ value: kind, label: COLLAPSE_KIND_LABELS[kind] }))}
+          onChange={(startCollapsedKinds) => updateEnhancerPreferences({ startCollapsedKinds })}
+          tokens={tokens}
+        />
+
+        <MultiChoiceRow<CollapseKind>
+          title="Cards to collapse when finished"
+          description="Cards that fold back up once they finish; none selected turns folding off. A failed call and an ask card stay open, and a card you opened or closed yourself keeps its state. Thinking stays open while it streams, then folds."
+          value={preferences.autoCollapseKinds}
+          options={COLLAPSE_KINDS.map((kind) => ({ value: kind, label: COLLAPSE_KIND_LABELS[kind] }))}
+          lockedValues={preferences.startCollapsedKinds}
+          lockedHint="Dimmed kinds already start collapsed, so there is nothing to fold."
+          onChange={(autoCollapseKinds) => updateEnhancerPreferences({ autoCollapseKinds })}
+          tokens={tokens}
+        />
+
+        <LimitRow
+          title="Only fold longer cards"
+          description="Leaves a tool card open on finish while its output, code and diff total fewer lines than this. Off folds every selected card."
+          value={preferences.autoCollapseMinLines}
+          fallback={10}
+          disabled={
+            preferences.autoCollapseKinds.every((kind) => preferences.startCollapsedKinds.includes(kind))
+          }
+          onChange={(autoCollapseMinLines) => updateEnhancerPreferences({ autoCollapseMinLines })}
+          tokens={tokens}
+        />
+      </Section>
+      <Section
+        id="limits"
+        title="Long content"
+        description="Past this many lines, output, code and prompts fold behind a control."
+        defaultOpen={true}
+        tokens={tokens}
+      >
+        <LimitRow
+          title="Long terminal output"
+          description="Text results (command output, errors, eval output, GitHub replies) past this many lines keep their start and their end and fold the middle. Off never folds."
+          fallback={20}
+          value={preferences.shellMaxLines}
+          onChange={(shellMaxLines) => updateEnhancerPreferences({ shellMaxLines })}
+          tokens={tokens}
+        />
+
+        <LimitRow
+          title="Long code and diffs"
+          description="File reads, writes, diffs, structured data (MCP, GitHub, eval code) and code blocks in replies past this many lines show the first lines and fold the rest. Off never folds."
+          fallback={30}
+          value={preferences.codeMaxLines}
+          onChange={(codeMaxLines) => updateEnhancerPreferences({ codeMaxLines })}
+          tokens={tokens}
+        />
+
+        <LimitRow
+          title="Long prompts"
+          description="A prompt you wrote past this many lines shows its first lines and folds the rest, in this plugin's prompt bubble only. A long paragraph with no line breaks counts by about 70 characters a line. Off never folds."
+          fallback={15}
+          value={preferences.promptMaxLines}
+          onChange={(promptMaxLines) => updateEnhancerPreferences({ promptMaxLines })}
+          tokens={tokens}
+        />
+      </Section>
+      <Section
+        id="advanced"
+        title="Advanced"
+        description="Safety and host integration. Most readers never need these."
+        defaultOpen={false}
+        tokens={tokens}
+      >
+        <ToggleRow
+          title="Load remote images automatically (at your own risk)"
+          description="Off: an image an agent links over http(s) waits behind a Load button that names the server. On: it loads without asking. The agent writes the address, so a prompt injection can make your machine request a URL that carries data from the chat, and the server sees your IP address. Turn this on only if you accept that."
+          value={preferences.loadRemoteImages}
+          onChange={(loadRemoteImages) => updateEnhancerPreferences({ loadRemoteImages })}
+          tokens={tokens}
+        />
+
+        <ToggleRow
+          title="Let Paseo fold tool calls and turns"
+          description="Only acts when Paseo's Chat display is Collapse tool calls or Collapse turns. Paseo can fold only its own rows, so with this on, tool calls and reasoning (and, for Collapse turns, prompts and replies, which then ignore the reply size and spacing set here) are drawn by Paseo instead of this plugin. Off keeps this plugin's cards in every mode, and Paseo does not fold them. Rows are drawn once when they load, so after changing this or Paseo's Chat display, reload the plugin or restart the app."
+          value={preferences.yieldToHostFolding}
+          onChange={(yieldToHostFolding) => updateEnhancerPreferences({ yieldToHostFolding })}
+          tokens={tokens}
+        />
+      </Section>
 
       <Pressable
         accessibilityRole="button"
@@ -729,6 +908,7 @@ const styles = StyleSheet.create({
   // compiles `flex: 1` to `flex: 1 1 0%` — a zero basis in a container that
   // sizes to its content, so the whole page collapses to nothing.
   container: { alignSelf: "stretch", padding: 16, gap: 12 },
+  dimmed: { opacity: 0.4 },
   toggleRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   // The text column takes the slack so a long description wraps instead of
   // pushing the switch off the card.
@@ -746,6 +926,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: "700" },
   description: { fontSize: 13, lineHeight: 18 },
   card: { borderWidth: 1, borderRadius: radius.card, overflow: "hidden" },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  sectionText: { flex: 1, minWidth: 0, gap: 3 },
+  sectionTitle: { fontSize: 15, fontWeight: "700" },
   row: { padding: 14, gap: 8, borderTopWidth: 1 },
   rowTitle: { fontSize: 14, fontWeight: "600" },
   rowDescription: { fontSize: 12, lineHeight: 17 },
