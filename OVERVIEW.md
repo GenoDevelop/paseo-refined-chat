@@ -2,21 +2,23 @@
 
 Refined Chat customizes how supported coding-agent conversations are displayed in Paseo. It provides structured tool cards, syntax-highlighted code and diffs, readable Markdown replies and optional controls for long tool or reasoning output.
 
-## Typography
+## Text size and spacing
 
-The plugin has three independent text-size controls:
+Three independent text-size controls cover **assistant replies**, **tool cards** and **code and terminal** output, each from **50% to 300%** (decimals allowed, default 100%). Reply line spacing is a fourth control, from 80% to 200%. Settings are remembered in the local Paseo client.
 
-- **Assistant replies:** Markdown text, headings, lists and spacing.
-- **Tool cards:** tool labels, reasoning details, statuses and checklists.
-- **Code and terminal:** code blocks, diffs, line numbers and terminal output.
+## Folding
 
-Enter any percentage from **50% to 300%**, including decimal values. Each category starts at 100% and remembers its setting in the local Paseo client. Inline code in a paragraph follows the reply scale so it remains aligned with surrounding text.
+Nothing folds until you choose. You pick which kinds of card start collapsed, which collapse when they finish (shell and git, writes, edits, reads, other tools, thinking), and how many lines a card needs before it folds. Long terminal output, code and diffs, code blocks in replies, and long prompts fold behind a "Show more" control, and Copy and find still reach the hidden text. A card you open or close yourself keeps its state.
 
-## Reading controls
+## Colours
 
-Tool cards can automatically collapse when execution finishes. Manually expanded or collapsed cards keep their state, and failed tool calls or cards requiring answers remain accessible. Reasoning traces can start collapsed. Both features are disabled by default, and long expanded cards include a collapse control near the bottom.
+An optional custom accent, an optional colour for bold text, and optional `==highlight==` marks (off by default) draw from one palette or any hex colour.
 
-Other settings include an accent color, an interface font choice, code ligatures, optional translucent surfaces, user-message bubbles, and Markdown presentation styles.
+## Cards, images and links
+
+Shell, git, read, write, edit, MCP, eval, subagent, hub and Paseo tool calls get typed cards with a short summary of what each did, and failed edits are labelled as not applied. Images in replies and image reads show the picture with a viewer; remote images wait for a click unless you opt in. Links show where they go and warn when their text and target disagree.
+
+Other settings include an interface font, code ligatures, frosted surfaces, user-message bubbles and Markdown presentation styles.
 
 ## Requirements and setup
 
