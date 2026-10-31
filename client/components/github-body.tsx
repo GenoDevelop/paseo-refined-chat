@@ -7,6 +7,7 @@ import { SyntaxHighlightBlock } from "./syntax-highlight";
 import { FoldedOutput } from "./folded-output";
 import { unselectable } from "./selection";
 import { openLink } from "./open-link";
+import { LINK_UNDERLINE, plainLinkProps } from "./markdown/link-style";
 import type { GitHubToolData } from "../../shared/contracts";
 
 interface GitHubBodyProps {
@@ -79,7 +80,7 @@ export function GitHubBody({
           fontFamily: tokens.fontMono,
           fontSize: tokens.fs(11),
           color: tokens.accent,
-          textDecorationLine: "underline",
+          textDecorationLine: LINK_UNDERLINE,
         },
         terminal: {
           padding: 10,
@@ -171,7 +172,7 @@ export function GitHubBody({
 
       {data.link ? (
         <Pressable accessibilityRole="link" onPress={() => openLink(data.link ?? "")}>
-          <Text style={styles.link} numberOfLines={1}>
+          <Text style={styles.link} numberOfLines={1} {...plainLinkProps()}>
             {data.link}
           </Text>
         </Pressable>
