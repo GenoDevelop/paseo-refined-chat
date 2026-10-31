@@ -6,8 +6,6 @@ theme, and you decide how big the text is, what folds, and how it is coloured.
 
 ![A turn in Refined Chat: a prompt, a command card, a folded read, and a reply with a coloured accent, bold text and a highlight mark](images/hero.png)
 
-<!-- SCREENSHOT hero: see the screenshot list in the pull request. -->
-
 - **Three independent text sizes** for replies, tool cards and code, plus reply line spacing.
 - **You choose what folds**: which card kinds start collapsed, which fold when they finish, and how long
   an output must be before it folds at all. Long prompts, code blocks and tool output fold too.
