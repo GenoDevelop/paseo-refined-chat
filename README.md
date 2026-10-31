@@ -179,9 +179,7 @@ underline on hover, and the full address in a bubble above it. When the text rea
 differs from the real target, the icon turns into an amber warning and the bubble names both. File
 paths and links on tool cards get the same underline. On a touch screen the underline stays permanent.
 
-![A link with its hover bubble, and a link whose text and target disagree](docs/images/links.png)
-
-<!-- SCREENSHOT links: see the screenshot list in the pull request. -->
+![Links in a reply: the full address in a bubble on hover, and an amber warning on a link whose text names another site](docs/images/links.png)
 
 ## Opening files
 
