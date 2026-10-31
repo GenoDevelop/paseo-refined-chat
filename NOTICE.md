@@ -38,3 +38,5 @@ credited to their authors and ported by hand:
 - Images in assistant replies and spaces in image paths: [PR #26](https://github.com/ABorakati/beautiful-chat/pull/26) by **po-trottier**, adapted (remote images are not loaded automatically here).
 - Idle tool-card animations and the frosted-glass switch: [PR #24](https://github.com/ABorakati/beautiful-chat/pull/24) by **thsrite**.
 - Edit diff computed from old and new text: [PR #8](https://github.com/ABorakati/beautiful-chat/pull/8) by **Moyf**. The diff builder is used as written; line numbers, line statistics and in-line highlighting are original to Refined Chat.
+- Custom colours for accent and bold text: [PR #7](https://github.com/ABorakati/beautiful-chat/pull/7) by **Moyf**, adapted (one shared palette, switches, light-theme steps).
+- Highlight marks (`==text==`): [PR #6](https://github.com/ABorakati/beautiful-chat/pull/6) by **Moyf**, adapted (off by default). Its clickable file paths were not taken.
