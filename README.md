@@ -198,7 +198,11 @@ A file path in inline code in a reply works the same way: `src/app.ts`, `C:\work
 becomes a link (a `:55` line selector is accepted and ignored). A bare file name needs a common source or
 text extension, so `v1.beta` stays text. The path comes from the agent, so network paths (`\\host\share`,
 `//host/share`) are never linked and the daemon refuses them. The link only shows the file; it never opens
-or runs it.
+or runs it. A link carries a file icon and, on hover, the bubble "Show in file manager".
+
+A folder in inline code links too, with a folder icon and the bubble "Open folder", when it cannot be
+mistaken for prose: it ends with a separator (`src/`, `.\build\`) or starts from a drive or `~` (`C:\work\app`,
+`~/app`). `and/or`, `/api/users` and `/compact` stay text.
 
 A directory path opens that directory. A path the daemon cannot stat does nothing. The link cannot open
 Paseo's own file editor: see the first [limitation](#plugin-sdk-limitations-found-while-building-this).

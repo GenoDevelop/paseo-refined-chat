@@ -7,8 +7,8 @@ import { selectableSurface, unselectable } from "../selection";
 import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
 import { openLink } from "../open-link";
-import { isFilePath } from "./file-path";
-import { linkProps, plainLinkProps } from "./link-style";
+import { pathKind } from "./file-path";
+import { linkProps, pathLinkProps } from "./link-style";
 import { parseMarkdown, type MdAlign, type MdBlock, type MdInline, type MdListItem } from "./parse";
 import { ReplyImage, THUMB_HEIGHT, THUMB_WIDTH } from "../reply-image";
 import { useImageFile } from "../../image-file";
@@ -726,13 +726,15 @@ function inlineText(spans: MdInline[]): string {
 export const RevealPathContext = createContext<((path: string) => void) | null>(null);
 
 /**
- * Inline code. When it reads as a file path and a reveal is available, pressing
- * it shows the file; the chip looks the same and gains the link hover. Only a
- * reveal: nothing is opened or run, and a path that does not exist does nothing.
+ * Inline code. When it reads as a file or folder path and a reveal is available,
+ * pressing it shows the file, or opens the folder; the chip gains an icon and the
+ * link hover. Only a reveal: nothing is run, and a path that does not exist does
+ * nothing.
  */
 function CodeSpan({ text, style }: { text: string; style: TextStyle }) {
   const reveal = useContext(RevealPathContext);
-  if (!reveal || !isFilePath(text)) {
+  const kind = reveal ? pathKind(text) : null;
+  if (!reveal || !kind) {
     return (
       <Text selectable style={style}>
         {text}
@@ -745,7 +747,7 @@ function CodeSpan({ text, style }: { text: string; style: TextStyle }) {
       accessibilityRole="link"
       onPress={() => reveal(text)}
       style={style}
-      {...plainLinkProps()}
+      {...pathLinkProps(kind)}
     >
       {text}
     </Text>

@@ -28,6 +28,13 @@ const MAIL_ICON = svg(
   "<path fill='none' stroke='black' stroke-width='2.2' stroke-linejoin='round' d='M3 6h18v12H3zM3 7l9 7 9-7'/>",
 );
 
+const FILE_ICON = svg(
+  "<path fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' d='M6 3h8l4 4v14H6zM14 3v4h4'/>",
+);
+const FOLDER_ICON = svg(
+  "<path fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' d='M3 6h6l2 2h10v11H3z'/>",
+);
+
 const WARN_ICON = svg(
   "<path fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M12 3 22 20H2zM12 10v4.5M12 17.6v.1'/>",
 );
@@ -70,6 +77,8 @@ const RULE = `[data-rclink] {
 [data-rckind="github"] { --rcicon: ${GITHUB_ICON}; }
 [data-rckind="web"] { --rcicon: ${WEB_ICON}; }
 [data-rckind="mail"] { --rcicon: ${MAIL_ICON}; }
+[data-rckind="file"] { --rcicon: ${FILE_ICON}; }
+[data-rckind="folder"] { --rcicon: ${FOLDER_ICON}; }
 [data-rclink][data-rchref]:hover::after {
   content: attr(data-rchref);
   position: absolute;
@@ -175,6 +184,22 @@ export const LINK_UNDERLINE = Platform.OS === "web" ? "none" : "underline";
 export function plainLinkProps(): TextProps {
   if (Platform.OS !== "web") return {};
   return { dataSet: { rclink: true, rckind: "bare" } } as unknown as TextProps;
+}
+
+/**
+ * For a path in inline code: the file or folder icon and, on hover, a bubble
+ * that says what pressing does. The bubble rides on `data-rchref`, which is
+ * what the address bubble reads, so the same rule draws it.
+ */
+export function pathLinkProps(kind: "file" | "folder"): TextProps {
+  if (Platform.OS !== "web") return {};
+  return {
+    dataSet: {
+      rclink: true,
+      rckind: kind,
+      rchref: kind === "file" ? "Show in file manager" : "Open folder",
+    },
+  } as unknown as TextProps;
 }
 
 /** Web-only attributes for one link; the cast is needed because `TextProps` has no `dataSet`. */

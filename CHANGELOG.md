@@ -7,7 +7,7 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 
 ### Added
 - "Code font": choose the font for code, diffs, terminal output and paths. Iosevka stays the default; "Paseo" follows the Code font set in Paseo's Appearance settings, live; "Custom" takes the name of an installed font and falls back to Paseo's Code font if it is missing. "Code glyphs" (ligatures or literal) applies to Iosevka only. Paseo's Code size is not followed: the "Code and terminal" text size still sets the size. Web and desktop follow Paseo's font; iOS and Android use the platform monospace for "Paseo".
-- File paths in inline code in replies (`src/app.ts`, `C:\work\app.ts:55`) are links: pressing one shows the file in the file manager, as a file name on a tool card does. The link only reveals the file and never opens it. A path to a file that does not exist does nothing.
+- File and folder paths in inline code in replies (`src/app.ts`, `C:\work\app.ts:55`, `src/`, `~/app`) are links: pressing a file shows it in the file manager, as a file name on a tool card does, and pressing a folder opens it. A link has a file or folder icon and a hover bubble saying what it does. The link only reveals and never opens or runs a file. A path that does not exist does nothing. A folder needs a trailing separator or a drive or `~` root, so `and/or` and `/api/users` stay text.
 
 ### Fixed
 - The daemon refuses to reveal a network path (`\\host\share`, `//host/share`): on Windows, looking one up contacts that host.
