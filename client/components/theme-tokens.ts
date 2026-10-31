@@ -1,5 +1,10 @@
 import type { PluginTheme } from "@getpaseo/plugin";
-import { DEFAULT_PREFERENCES, type EnhancerPreferences, ACCENT_PRESETS } from "../preferences";
+import {
+  DEFAULT_PREFERENCES,
+  type EnhancerPreferences,
+  paletteHex,
+  PALETTE,
+} from "../preferences";
 
 export type PluginSurfaceColors = PluginTheme["colors"];
 
@@ -61,6 +66,10 @@ export interface ExtendedThemeTokens {
 
   // Accent: primary action, selection, and running state only
   accent: string;
+  /** Bold text in a reply: the text colour unless the reader picked another. */
+  strong: string;
+  /** The wash behind a `==mark==`. */
+  markBackground: string;
   accentForeground: string;
   accentBg: string;
   // The authored turn sits on a raised theme surface, exactly as the native
@@ -182,7 +191,19 @@ export function buildThemeTokens(
 ): ExtendedThemeTokens {
   const isDark = isDarkSurface(colors.surface0);
   const fg = colors.foreground;
-  const accent = ACCENT_PRESETS[preferences.accent] ?? colors.accent;
+  const accent =
+    preferences.accent === "host"
+      ? colors.accent
+      : paletteHex(preferences.accent, preferences.accentCustomColor, isDark);
+  // The wash is the soft step on any surface; deep text steps would turn it to mud.
+  const markPen =
+    preferences.markColor === "custom"
+      ? preferences.markCustomColor
+      : PALETTE[preferences.markColor];
+  const strong =
+    preferences.boldColor === "inherit"
+      ? fg
+      : paletteHex(preferences.boldColor, preferences.boldCustomColor, isDark);
   const success = isDark ? "#4cb782" : "#1f8a5b";
   const warning = isDark ? "#d9a53f" : "#a36a00";
   const danger = colors.statusDanger;
@@ -227,6 +248,8 @@ export function buildThemeTokens(
     foregroundSubtle: withAlpha(colors.foregroundMuted, 0.7),
 
     accent,
+    strong,
+    markBackground: withAlpha(markPen, isDark ? 0.32 : 0.6),
     accentForeground: colors.accentForeground,
     accentBg: withAlpha(accent, isDark ? 0.14 : 0.1),
     userSurface: withAlpha(fg, isDark ? 0.1 : 0.06),

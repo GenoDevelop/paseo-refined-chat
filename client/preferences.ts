@@ -2,15 +2,56 @@ import { useSyncExternalStore } from "react";
 import { COLLAPSE_KINDS, sanitizeCollapseKinds } from "./tool-collapse";
 import type { CollapseKind } from "./tool-collapse";
 
-export const ACCENT_PRESETS = {
-  host: undefined,
-  jade: "#10b981",
-  violet: "#8b5cf6",
-  amber: "#f59e0b",
-  rose: "#f43f5e",
+/**
+ * One palette behind every colour setting, so a name means the same colour
+ * wherever it is chosen. These are the soft pastel steps: they read as text on
+ * a dark surface and as a highlighter wash on any surface.
+ */
+export const PALETTE = {
+  rose: "#fda4af",
+  orange: "#fdba74",
+  yellow: "#fde047",
+  green: "#86efac",
+  sky: "#7dd3fc",
+  violet: "#c4b5fd",
 } as const;
 
-export type AccentPreset = keyof typeof ACCENT_PRESETS;
+/** The same names a step deeper, for text on a light surface where pastel would vanish. */
+const PALETTE_DEEP: Readonly<Record<keyof typeof PALETTE, string>> = {
+  rose: "#e11d48",
+  orange: "#ea580c",
+  yellow: "#ca8a04",
+  green: "#16a34a",
+  sky: "#0284c7",
+  violet: "#7c3aed",
+};
+
+export type PaletteColor = keyof typeof PALETTE;
+
+/** A palette colour, the hex the reader chose, or the setting's own extra. */
+export type AccentChoice = PaletteColor | "host" | "custom";
+export type BoldColorChoice = PaletteColor | "inherit" | "custom";
+export type MarkColorChoice = PaletteColor | "custom";
+
+/** Colour ids from before the shared palette, mapped to their closest successor. */
+const LEGACY_COLOURS: Readonly<Record<string, PaletteColor>> = {
+  jade: "green",
+  amber: "yellow",
+  blue: "sky",
+  mint: "green",
+  peach: "orange",
+};
+
+/** The colour of text drawn in a choice, given the hex kept for Custom. */
+export function paletteHex(
+  choice: PaletteColor | "custom",
+  custom: string,
+  isDark: boolean,
+): string {
+  if (choice === "custom") return custom;
+  return isDark ? PALETTE[choice] : PALETTE_DEEP[choice];
+}
+
 export type UiFontPreference = "inter" | "system";
 export type CodeFontPreference = "code" | "plain";
 export type MarkdownVariantPreference = "document" | "compact" | "terminal";
@@ -42,7 +83,11 @@ export function sanitizeLineLimit(value: unknown, fallback: number): number {
 }
 
 export interface EnhancerPreferences {
-  accent: AccentPreset;
+  accent: AccentChoice;
+  /** The hex used when `accent` is `custom`; kept while a preset is chosen. */
+  accentCustomColor: string;
+  boldColor: BoldColorChoice;
+  boldCustomColor: string;
   uiFont: UiFontPreference;
   codeFont: CodeFontPreference;
   /** Independent scale factors (1 = 100%) for replies, tool UI and code. */
@@ -102,6 +147,10 @@ export interface EnhancerPreferences {
    * plugin cannot extend, so the toggle has no effect there.
    */
   selectionActions: boolean;
+  /** Draw `==text==` in a reply as a highlighter mark. */
+  highlightMarks: boolean;
+  markColor: MarkColorChoice;
+  markCustomColor: string;
   /**
    * The plugin's own markdown rendering for assistant replies. Off hands the
    * turn back to Paseo's renderer, which is the safety valve: the plugin
@@ -123,6 +172,9 @@ const STORAGE_KEY = "paseo/refined-chat/preferences/v1";
 
 export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   accent: "host",
+  accentCustomColor: "#6366f1",
+  boldColor: "inherit",
+  boldCustomColor: "#e64980",
   uiFont: "inter",
   codeFont: "code",
   replyScale: 1,
@@ -141,6 +193,9 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   autoCollapseMinLines: 0,
   startCollapsedKinds: [],
   selectionActions: true,
+  highlightMarks: false,
+  markColor: "yellow",
+  markCustomColor: "#eab308",
   assistantMarkdown: true,
   markdownVariant: "document",
   yieldToHostFolding: false,
@@ -153,8 +208,21 @@ function storage(): Storage | undefined {
   return candidate.localStorage;
 }
 
-function isAccentPreset(value: unknown): value is AccentPreset {
-  return typeof value === "string" && value in ACCENT_PRESETS;
+function sanitizeColourChoice<T extends string>(
+  value: unknown,
+  extras: readonly string[],
+  fallback: T,
+): T {
+  if (typeof value !== "string") return fallback;
+  const name = LEGACY_COLOURS[value] ?? value;
+  return name === "custom" || name in PALETTE || extras.includes(name) ? (name as T) : fallback;
+}
+
+export const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+/** Keeps a stored hex well-formed; anything else falls back. */
+function sanitizeHex(value: unknown, fallback: string): string {
+  return typeof value === "string" && HEX_COLOR.test(value) ? value.toLowerCase() : fallback;
 }
 
 /**
@@ -195,7 +263,17 @@ function loadPreferences(): EnhancerPreferences {
     if (!stored) return { ...DEFAULT_PREFERENCES };
     const candidate = JSON.parse(stored) as Partial<EnhancerPreferences>;
     return {
-      accent: isAccentPreset(candidate.accent) ? candidate.accent : DEFAULT_PREFERENCES.accent,
+      accent: sanitizeColourChoice(candidate.accent, ["host"], DEFAULT_PREFERENCES.accent),
+      accentCustomColor: sanitizeHex(
+        candidate.accentCustomColor,
+        DEFAULT_PREFERENCES.accentCustomColor,
+      ),
+      boldColor: sanitizeColourChoice(
+        candidate.boldColor,
+        ["inherit"],
+        DEFAULT_PREFERENCES.boldColor,
+      ),
+      boldCustomColor: sanitizeHex(candidate.boldCustomColor, DEFAULT_PREFERENCES.boldCustomColor),
       uiFont: candidate.uiFont === "system" ? "system" : DEFAULT_PREFERENCES.uiFont,
       codeFont: candidate.codeFont === "plain" ? "plain" : DEFAULT_PREFERENCES.codeFont,
       replyScale: sanitizeTypographyScale(candidate.replyScale),
@@ -232,6 +310,12 @@ function loadPreferences(): EnhancerPreferences {
         typeof candidate.selectionActions === "boolean"
           ? candidate.selectionActions
           : DEFAULT_PREFERENCES.selectionActions,
+      highlightMarks:
+        typeof candidate.highlightMarks === "boolean"
+          ? candidate.highlightMarks
+          : DEFAULT_PREFERENCES.highlightMarks,
+      markColor: sanitizeColourChoice(candidate.markColor, [], DEFAULT_PREFERENCES.markColor),
+      markCustomColor: sanitizeHex(candidate.markCustomColor, DEFAULT_PREFERENCES.markCustomColor),
       assistantMarkdown:
         typeof candidate.assistantMarkdown === "boolean"
           ? candidate.assistantMarkdown

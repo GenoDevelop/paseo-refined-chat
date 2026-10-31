@@ -27,6 +27,8 @@ export interface MarkdownViewProps {
   text: string;
   tokens: ExtendedThemeTokens;
   variant: MarkdownVariant;
+  /** Draws `==text==` as a highlighter mark; off keeps the equals signs as typed. */
+  marks?: boolean;
 }
 
 type MdTableBlock = Extract<MdBlock, { kind: "table" }>;
@@ -190,6 +192,8 @@ interface MarkdownStyles {
   strong: TextStyle;
   emphasis: TextStyle;
   strike: TextStyle;
+  /** Null when highlighting is off, so a mark is drawn back as typed. */
+  mark: TextStyle | null;
   codeSpan: TextStyle;
   link: TextStyle;
 }
@@ -237,13 +241,16 @@ function scaleMetrics(metrics: VariantMetrics, scale: number, spacing: number): 
   };
 }
 
-export function MarkdownView({ text, tokens, variant }: MarkdownViewProps) {
+export function MarkdownView({ text, tokens, variant, marks = false }: MarkdownViewProps) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
   const metrics = useMemo(
     () => scaleMetrics(VARIANT_METRICS[variant], tokens.scales.reply, tokens.replySpacing),
     [variant, tokens],
   );
-  const styles = useMemo(() => buildStyles(tokens, variant, metrics), [tokens, variant, metrics]);
+  const styles = useMemo(() => {
+    const built = buildStyles(tokens, variant, metrics);
+    return { ...built, mark: marks ? built.mark : null };
+  }, [tokens, variant, metrics, marks]);
   const { codeMaxLines } = useEnhancerPreferences();
   const context = useMemo<RenderContext>(
     () => ({ styles, tokens, metrics, codeMaxLines }),
@@ -745,6 +752,13 @@ function renderInline(
             {renderInline(span.spans, styles, key)}
           </Text>
         );
+      case "mark":
+        if (!styles.mark) return ["==", ...renderInline(span.spans, styles, key), "=="];
+        return (
+          <Text key={key} selectable style={styles.mark}>
+            {renderInline(span.spans, styles, key)}
+          </Text>
+        );
       case "link":
         // `onPress` on a Text, not a Pressable wrapper: a link sits mid
         // sentence, and a View there would break the line box and drop the
@@ -1024,7 +1038,7 @@ function buildStyles(
     cellRight: { textAlign: "right" },
     strong: {
       fontWeight: "700",
-      color: tokens.foreground,
+      color: tokens.strong,
     },
     emphasis: {
       fontStyle: "italic",
@@ -1032,6 +1046,13 @@ function buildStyles(
     strike: {
       textDecorationLine: "line-through",
       color: tokens.foregroundMuted,
+    },
+    mark: {
+      // A highlighter wash, not the accent: a mark is the author's emphasis,
+      // and the accent already means "action".
+      backgroundColor: tokens.markBackground,
+      borderRadius: radius.chip,
+      color: tokens.foreground,
     },
     codeSpan: {
       fontFamily: tokens.fontMono,

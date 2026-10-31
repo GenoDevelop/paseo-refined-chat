@@ -19,6 +19,7 @@ export type MdInline =
   | { kind: "strong"; spans: MdInline[] }
   | { kind: "emphasis"; spans: MdInline[] }
   | { kind: "strike"; spans: MdInline[] }
+  | { kind: "mark"; spans: MdInline[] }
   | { kind: "link"; href: string; spans: MdInline[] };
 
 /** One table cell, already reduced to inline runs. */
@@ -563,6 +564,24 @@ function parseInline(src: string, depth = 0): MdInline[] {
         continue;
       }
     }
+    // `==mark==`, the highlighter convention markdown-it-mark established.
+    // Both edges must touch content, so a comparison written in prose
+    // ("if a == b") keeps its equals signs. The parser always reads it; the
+    // renderer draws the equals signs back when highlighting is off.
+    if (ch === "=" && src[index + 1] === "=") {
+      const close = src.indexOf("==", index + 2);
+      if (
+        close > index + 2 &&
+        (src[index + 2] ?? " ").trim() !== "" &&
+        (src[close - 1] ?? " ").trim() !== ""
+      ) {
+        flush();
+        out.push({ kind: "mark", spans: parseInline(src.slice(index + 2, close), depth + 1) });
+        index = close + 2;
+        continue;
+      }
+    }
+
     if ((ch === "*" || ch === "~") && src[index + 1] === ch) {
       const close = src.indexOf(ch + ch, index + 2);
       if (close > index + 2) {
