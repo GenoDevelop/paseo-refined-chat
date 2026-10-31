@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import type { PluginWorkspacePanelProps } from "@getpaseo/plugin/client";
 import { useRpc } from "@getpaseo/plugin/client";
 import { ScrollView } from "@getpaseo/plugin/client/react-native";
 import { hostFontEscape } from "./components/host-font-escape";
+import { ImageViewer } from "./components/image-viewer";
+import { isImagePath, useImageFile, type ImageFile } from "./image-file";
 import { ImageBaseContext, MarkdownView } from "./components/markdown/markdown-view";
 import { SyntaxHighlightBlock } from "./components/syntax-highlight";
 import { buildThemeTokens, radius, type ExtendedThemeTokens } from "./components/theme-tokens";
@@ -86,8 +88,14 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
   // A Markdown file opens rendered; the reader can flip to its source.
   const [view, setView] = useState<"rendered" | "source">("rendered");
 
+  // A picture goes through the image RPC, which reads the bytes and sizes; the
+  // text read would refuse it as binary.
+  const isImage = current !== null && isImagePath(current.path);
+  const image = useImageFile(isImage ? current.path : undefined, current?.cwd ?? null);
+  const [enlarged, setEnlarged] = useState(false);
+
   useEffect(() => {
-    if (!current) return;
+    if (!current || isImagePath(current.path)) return;
     let stale = false;
     setLoad({ state: "loading" });
     readFile({ cwd: current.cwd, path: current.path }).then(
@@ -145,6 +153,26 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
         >
           {name}
         </Text>
+        {isImage && image?.dataUri ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Full screen"
+            onPress={() => setEnlarged(true)}
+            style={{
+              borderWidth: 1,
+              borderColor: tokens.border,
+              borderRadius: radius.block,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+            }}
+          >
+            <Text
+              style={{ color: tokens.foregroundMuted, fontFamily: tokens.fontUi, fontSize: tokens.fs(11) }}
+            >
+              Full screen
+            </Text>
+          </Pressable>
+        ) : null}
         {isMarkdown ? (
           <Pressable
             accessibilityRole="button"
@@ -184,7 +212,16 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
           </Text>
         </Pressable>
       </View>
-      {load.state === "ready" ? (
+      {isImage ? (
+        <PictureBody
+          file={image}
+          caption={name}
+          tokens={tokens}
+          enlarged={enlarged}
+          onClose={() => setEnlarged(false)}
+          onOpen={() => setEnlarged(true)}
+        />
+      ) : load.state === "ready" ? (
         <ScrollView style={{ flex: 1 }}>
           {isMarkdown && view === "rendered" ? (
             <View style={{ padding: 16 }}>
@@ -215,6 +252,66 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
       )}
     </View>
   );
+}
+
+/** The whole picture, fitted to the panel's width; pressing it opens it full screen. */
+function PictureBody({
+  file,
+  caption,
+  tokens,
+  enlarged,
+  onOpen,
+  onClose,
+}: {
+  file: ImageFile | null;
+  caption: string;
+  tokens: ExtendedThemeTokens;
+  enlarged: boolean;
+  onOpen(): void;
+  onClose(): void;
+}) {
+  if (file === null) return <Message tokens={tokens} text="Loading…" />;
+  if (file.dataUri === null) {
+    return <Message tokens={tokens} text={file.error ?? "The image could not be read."} />;
+  }
+  const ratio = file.width && file.height ? file.width / file.height : 1;
+  const details = [
+    file.width && file.height ? `${file.width} × ${file.height}` : null,
+    file.bytes ? formatBytes(file.bytes) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 8 }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${caption}. Full screen`} onPress={onOpen}>
+        <Image
+          source={{ uri: file.dataUri }}
+          style={{ width: "100%", aspectRatio: ratio, borderRadius: radius.block }}
+          resizeMode="contain"
+        />
+      </Pressable>
+      {details ? (
+        <Text style={{ color: tokens.foregroundMuted, fontFamily: tokens.fontUi, fontSize: tokens.fs(11) }}>
+          {details}
+        </Text>
+      ) : null}
+      <ImageViewer
+        visible={enlarged}
+        uri={file.dataUri}
+        label={caption}
+        details={details || undefined}
+        width={file.width}
+        height={file.height}
+        onClose={onClose}
+      />
+    </ScrollView>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function Message({ tokens, text }: { tokens: ExtendedThemeTokens; text: string }) {

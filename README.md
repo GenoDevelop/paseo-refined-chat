@@ -207,7 +207,9 @@ press replaces the file in the open panel. The panel reads the
 file through a second daemon-side RPC (`file.read`), which is stricter than `file.reveal` because it
 returns contents: the file must be inside the agent's working directory once symbolic links are
 resolved, at most 1 MB, and text. Any other file, and every folder, goes to the file manager instead (the
-panel says why and offers a button). The setting "File paths in replies" switches the whole thing back to
+panel says why and offers a button). A picture opens drawn, with a Full screen button, through the same
+image RPC that draws pictures on tool cards: it reads only recognised image types of up to 3 MB and, unlike
+`file.read`, is not limited to the working directory. The setting "File paths in replies" switches the whole thing back to
 the file manager.
 
 A folder in inline code links too, with a folder icon and the bubble "Open folder", when it cannot be
