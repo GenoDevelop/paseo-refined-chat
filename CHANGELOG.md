@@ -22,6 +22,7 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 - The settings page is grouped into collapsible sections (Appearance, Text size and spacing, Replies and prompts, Tool card folding, Long content, Advanced), with the open state remembered on the client. Each fold limit is now a switch with a number field that appears when it is on, instead of a number where 0 means off; saved values carry over. "Collapse length" became "Only fold longer cards". A kind chosen in "Cards that start collapsed" is dimmed in "Cards to collapse when finished", and the length limit dims when no kind is left to fold.
 
 ### Fixed
+- A link whose text is a file name (`tool-collapse.ts`, `README.md`) no longer shows the amber warning: its extension looked like a domain that differed from the link target.
 - A failed edit or write no longer shows a `+X -Y` count in its header, and a failed edit labels its diff as not applied, since nothing changed on disk.
 
 ## [0.3.0] - 2026-10-31
