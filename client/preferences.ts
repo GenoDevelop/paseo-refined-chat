@@ -91,8 +91,8 @@ export interface EnhancerPreferences {
    */
   autoCollapseMinLines: number;
   /**
-   * Cards drawn folded from the start, even while their call still runs; a
-   * failed call opens anyway. Unlike `autoCollapseKinds`, which folds a card
+   * Cards drawn folded from the start, even while their call still runs and
+   * if it fails. Unlike `autoCollapseKinds`, which folds a card
    * once it finishes, this keeps it closed throughout.
    */
   startCollapsedKinds: CollapseKind[];
