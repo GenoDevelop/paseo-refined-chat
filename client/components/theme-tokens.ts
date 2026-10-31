@@ -2,6 +2,7 @@ import type { PluginTheme } from "@getpaseo/plugin";
 import {
   DEFAULT_PREFERENCES,
   type EnhancerPreferences,
+  type UiFontPreference,
   paletteHex,
   PALETTE,
 } from "../preferences";
@@ -32,6 +33,21 @@ export const fontMono = "OMP Iosevka";
  */
 export const fontCode = "OMP Iosevka Code";
 export const fontUi = "OMP Inter";
+
+/** The family a React Native style takes for the chosen interface font. */
+export const uiFontFamily = (uiFont: UiFontPreference): string =>
+  uiFont === "system" ? "System" : fontUi;
+
+/**
+ * The same choice as a CSS stack, for the few elements built outside React.
+ * React Native Web resolves `System` to the platform stack itself, but a raw
+ * `font-family: System` matches nothing and drops to the browser default, and
+ * the host's own font rule does not reach these elements either.
+ */
+export const domFontStack = (family: string): string =>
+  family === "System"
+    ? 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
+    : `"${family}", system-ui, sans-serif`;
 
 export interface ExtendedThemeTokens {
   isDark: boolean;
@@ -219,7 +235,7 @@ export function buildThemeTokens(
     isDark,
     fontMono,
     fontCode: preferences.codeFont === "plain" ? fontMono : fontCode,
-    fontUi: preferences.uiFont === "system" ? "System" : fontUi,
+    fontUi: uiFontFamily(preferences.uiFont),
 
     scales,
     replySpacing: preferences.replySpacing,

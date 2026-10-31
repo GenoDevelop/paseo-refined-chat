@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import type { TextProps, ViewProps } from "react-native";
 import { copyText } from "@getpaseo/plugin/client/react-native";
-import { radius } from "./theme-tokens";
+import { domFontStack, radius } from "./theme-tokens";
 import type { ExtendedThemeTokens } from "./theme-tokens";
 
 /**
@@ -288,7 +288,7 @@ function createBar(): Bar {
       bar.style.backgroundColor = tokens.surface0;
       bar.style.backgroundImage = `linear-gradient(${tokens.surface2}, ${tokens.surface2})`;
       bar.style.borderColor = tokens.border;
-      bar.style.fontFamily = tokens.fontUi;
+      bar.style.fontFamily = domFontStack(tokens.fontUi);
       copyButton.style.color = tokens.foreground;
       addButton.style.color = tokens.accent;
     },
