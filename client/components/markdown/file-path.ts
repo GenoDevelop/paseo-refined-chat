@@ -15,7 +15,8 @@ const FILE_SHAPE = new RegExp(
 const FOLDER_SLASH_SHAPE = new RegExp(`^${ROOT}(?:\\.?[\\w@+-][\\w.@+-]*[\\\\/])+$`);
 
 /** A folder named from a drive or the home folder, which prose never writes: `C:\work\app`, `~/app`. */
-const FOLDER_ROOTED_SHAPE = /^(?:[a-zA-Z]:[\\/]|~[\\/])(?:[\w.@+-]+[\\/])*[\w@+-][\w.@+-]*$/;
+const FOLDER_ROOTED_SHAPE =
+  /^(?:[a-zA-Z]:[\\/]|~[\\/])(?:\.?[\w@+-][\w.@+-]*[\\/])*\.?[\w@+-][\w.@+-]*$/;
 
 export type PathKind = "file" | "folder";
 
