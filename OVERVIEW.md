@@ -37,4 +37,4 @@ The plugin does not provide its own model service or require a separate external
 
 A Git installation prepares its locked production dependencies through npm on the daemon host. Package lifecycle scripts are disabled. Plugin server code is not sandboxed and runs with the daemon user's permissions; install only code you trust. No additional software downloads are initiated by chat controls.
 
-For source code, known limitations and development documentation, see the [Refined Chat README](https://github.com/GenoDevelop/refined-chat#readme).
+For source code, known limitations and development documentation, see the [Refined Chat README](https://github.com/GenoDevelop/paseo-refined-chat#readme).
