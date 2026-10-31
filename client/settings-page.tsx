@@ -8,6 +8,8 @@ import {
   LINE_LIMIT_MAX,
   TYPOGRAPHY_SCALE_MIN,
   TYPOGRAPHY_SCALE_MAX,
+  LINE_SPACING_MIN,
+  LINE_SPACING_MAX,
   resetEnhancerPreferences,
   updateEnhancerPreferences,
   useEnhancerPreferences,
@@ -217,12 +219,16 @@ function PercentageRow({
   value,
   onChange,
   tokens,
+  min = TYPOGRAPHY_SCALE_MIN,
+  max = TYPOGRAPHY_SCALE_MAX,
 }: {
   title: string;
   description: string;
   value: number;
   onChange(value: number): void;
   tokens: ExtendedThemeTokens;
+  min?: number;
+  max?: number;
 }) {
   const format = (scale: number) => String(Math.round(scale * 10000) / 100);
   const [draft, setDraft] = useState(() => format(value));
@@ -239,8 +245,8 @@ function PercentageRow({
     const percent = input ? Number(input) : NaN;
     if (
       !Number.isFinite(percent) ||
-      percent < TYPOGRAPHY_SCALE_MIN * 100 ||
-      percent > TYPOGRAPHY_SCALE_MAX * 100
+      percent < min * 100 ||
+      percent > max * 100
     ) {
       setInvalid(true);
       return;
@@ -294,7 +300,7 @@ function PercentageRow({
       </View>
       {invalid ? (
         <Text style={[styles.rowDescription, { color: tokens.danger }]}>
-          Enter a value from {TYPOGRAPHY_SCALE_MIN * 100}% to {TYPOGRAPHY_SCALE_MAX * 100}%.
+          Enter a value from {Math.round(min * 100)}% to {Math.round(max * 100)}%.
         </Text>
       ) : null}
     </View>
@@ -497,6 +503,16 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           value={preferences.replyScale}
           onChange={(replyScale) => updateEnhancerPreferences({ replyScale })}
           tokens={tokens}
+        />
+
+        <PercentageRow
+          title="Reply line spacing"
+          description="Height of each line in assistant replies, independent of the text size above. 100% is the default; 80% to 200%."
+          value={preferences.replySpacing}
+          onChange={(replySpacing) => updateEnhancerPreferences({ replySpacing })}
+          tokens={tokens}
+          min={LINE_SPACING_MIN}
+          max={LINE_SPACING_MAX}
         />
 
         <PercentageRow
