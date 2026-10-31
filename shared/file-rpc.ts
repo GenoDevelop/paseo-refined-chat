@@ -57,3 +57,29 @@ export const locateTextRpc = defineRpc({
     line: z.number().nullable(),
   }),
 });
+
+/** The largest file the side panel reads: a text file this big already fills a screen many times. */
+export const MAX_PREVIEW_BYTES = 1024 * 1024;
+
+/**
+ * Reads a text file for the side panel.
+ *
+ * The path comes from the agent's reply, and this call returns file contents,
+ * so it is stricter than `file.reveal`: the file must sit inside the agent's
+ * working directory once symbolic links are resolved, be at most
+ * `MAX_PREVIEW_BYTES`, and be text. Any other file answers with the reason and
+ * no contents, and the panel offers the file manager instead.
+ */
+export const readFileRpc = defineRpc({
+  // The host accepts lower-case, dotted RPC names only.
+  name: "file.read",
+  input: z.object({
+    cwd: z.string(),
+    path: z.string(),
+  }),
+  output: z.object({
+    text: z.string().nullable(),
+    /** Why there is no text: `outside` the working directory, `binary`, `large`, or `missing`. */
+    reason: z.enum(["outside", "binary", "large", "missing"]).nullable(),
+  }),
+});

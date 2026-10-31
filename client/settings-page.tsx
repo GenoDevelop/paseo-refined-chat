@@ -36,6 +36,7 @@ import {
   type PaletteColor,
   type CodeFontPreference,
   type MonoFontPreference,
+  type PathOpensPreference,
   type UiFontPreference,
 } from "./preferences";
 
@@ -1157,6 +1158,18 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           onChange={(markdownVariant) =>
             updateEnhancerPreferences({ markdownVariant })
           }
+          tokens={tokens}
+        />
+
+        <ChoiceRow<PathOpensPreference>
+          title="File paths in replies"
+          description="A file path in inline code is a link. It can show the file in a side panel (text files inside the project, read-only) or in your file manager. A folder, or a file the panel cannot show, always opens in the file manager."
+          value={preferences.pathOpens}
+          options={[
+            { value: "panel", label: "Side panel" },
+            { value: "manager", label: "File manager" },
+          ]}
+          onChange={(pathOpens) => updateEnhancerPreferences({ pathOpens })}
           tokens={tokens}
         />
 

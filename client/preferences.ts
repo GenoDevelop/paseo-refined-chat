@@ -56,6 +56,8 @@ export type UiFontPreference = "inter" | "system";
 export type CodeFontPreference = "code" | "plain";
 /** Which family draws monospace text: the embedded Iosevka, Paseo's own Code font, or a named one. */
 export type MonoFontPreference = "iosevka" | "paseo" | "custom";
+/** Where pressing a file path in a reply shows the file: a side panel, or the file manager. */
+export type PathOpensPreference = "panel" | "manager";
 export type MarkdownVariantPreference = "document" | "compact" | "terminal";
 
 /** Arbitrary percentage input, with safety bounds to avoid unreadable layouts. */
@@ -152,6 +154,7 @@ export interface EnhancerPreferences {
    * plugin cannot extend, so the toggle has no effect there.
    */
   selectionActions: boolean;
+  pathOpens: PathOpensPreference;
   /** Draw `==text==` in a reply as a highlighter mark. */
   highlightMarks: boolean;
   markColor: MarkColorChoice;
@@ -200,6 +203,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   autoCollapseMinLines: 0,
   startCollapsedKinds: [],
   selectionActions: true,
+  pathOpens: "panel",
   highlightMarks: false,
   markColor: "yellow",
   markCustomColor: "#eab308",
@@ -331,6 +335,7 @@ function loadPreferences(): EnhancerPreferences {
         typeof candidate.selectionActions === "boolean"
           ? candidate.selectionActions
           : DEFAULT_PREFERENCES.selectionActions,
+      pathOpens: candidate.pathOpens === "manager" ? "manager" : DEFAULT_PREFERENCES.pathOpens,
       highlightMarks:
         typeof candidate.highlightMarks === "boolean"
           ? candidate.highlightMarks

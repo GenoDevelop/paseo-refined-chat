@@ -1,9 +1,15 @@
 import { spawn } from "node:child_process";
-import { open, readFile, stat, type FileHandle } from "node:fs/promises";
+import { open, readFile, realpath, stat, type FileHandle } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
-import { locateTextRpc, revealPathRpc, stripSelector } from "./shared/file-rpc";
+import {
+  MAX_PREVIEW_BYTES,
+  locateTextRpc,
+  readFileRpc,
+  revealPathRpc,
+  stripSelector,
+} from "./shared/file-rpc";
 import { type HighlightLine, type HighlightToken, highlightRpc } from "./shared/highlight-rpc";
 import { imageRpc } from "./shared/image-rpc";
 
@@ -440,19 +446,32 @@ function tokenize(
   }
 }
 
+/**
+ * The absolute path a reply's text names. `resolve` also turns `C:/a/b` into
+ * `C:\a\b`, which Explorer's `/select,` needs: with forward slashes it opens a
+ * default folder instead. A leading `~` is the home directory.
+ */
+function resolveRequested(cwd: string, requested: string): string {
+  return /^~[\\/]/.test(requested)
+    ? resolve(homedir(), requested.slice(2))
+    : resolve(cwd, requested);
+}
+
+/**
+ * A path in a reply is the agent's text. On Windows a network path makes
+ * `stat` contact that host, which can hand it the user's credentials.
+ */
+function isNetworkPath(target: string): boolean {
+  return target.startsWith("\\\\") || target.startsWith("//");
+}
+
 export default function contribute(server: PluginServerContext) {
   server.handle(revealPathRpc, async (input) => {
     const requested = stripSelector(input.path);
     if (!requested) return { revealed: null, error: "No path" };
 
-    // `resolve` also turns `C:/a/b` into `C:\a\b`, which Explorer's `/select,`
-    // needs: with forward slashes it opens a default folder instead.
-    const target = /^~[\\/]/.test(requested)
-      ? resolve(homedir(), requested.slice(2))
-      : resolve(input.cwd, requested);
-    // A path in a reply is the agent's text. On Windows a network path makes
-    // `stat` contact that host, which can hand it the user's credentials.
-    if (target.startsWith("\\\\") || target.startsWith("//")) {
+    const target = resolveRequested(input.cwd, requested);
+    if (isNetworkPath(target)) {
       return { revealed: null, error: "Network paths are not revealed" };
     }
     try {
@@ -464,6 +483,34 @@ export default function contribute(server: PluginServerContext) {
         revealed: null,
         error: error instanceof Error ? error.message : String(error),
       };
+    }
+  });
+
+  server.handle(readFileRpc, async (input) => {
+    const requested = stripSelector(input.path);
+    const missing = { text: null, reason: "missing" } as const;
+    if (!requested || !input.cwd) return missing;
+
+    const target = resolveRequested(input.cwd, requested);
+    // Checked before any lookup: on Windows `realpath` on a network path
+    // contacts that host.
+    if (isNetworkPath(target)) return { text: null, reason: "outside" } as const;
+    try {
+      // Symbolic links are followed first, so a link inside the project that
+      // points elsewhere does not pass for a file inside it.
+      const [real, root] = await Promise.all([realpath(target), realpath(input.cwd)]);
+      const inside = relative(root, real);
+      if (inside === ".." || inside.startsWith(`..${sep}`) || isAbsolute(inside)) {
+        return { text: null, reason: "outside" } as const;
+      }
+      const entry = await stat(real);
+      if (!entry.isFile()) return missing;
+      if (entry.size > MAX_PREVIEW_BYTES) return { text: null, reason: "large" } as const;
+      const bytes = await readFile(real);
+      if (bytes.subarray(0, 8192).includes(0)) return { text: null, reason: "binary" } as const;
+      return { text: bytes.toString("utf8"), reason: null } as const;
+    } catch {
+      return missing;
     }
   });
 

@@ -7,7 +7,7 @@ import { selectableSurface, unselectable } from "../selection";
 import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
 import { openLink } from "../open-link";
-import { pathKind } from "./file-path";
+import { pathKind, type PathKind } from "./file-path";
 import { linkProps, pathLinkProps } from "./link-style";
 import { parseMarkdown, type MdAlign, type MdBlock, type MdInline, type MdListItem } from "./parse";
 import { ReplyImage, THUMB_HEIGHT, THUMB_WIDTH } from "../reply-image";
@@ -723,7 +723,9 @@ function inlineText(spans: MdInline[]): string {
  * Shows a path in the file manager. Absent where the host cannot reveal one,
  * which leaves every inline code span as plain text.
  */
-export const RevealPathContext = createContext<((path: string) => void) | null>(null);
+export const RevealPathContext = createContext<((path: string, kind: PathKind) => void) | null>(
+  null,
+);
 
 /**
  * Inline code. When it reads as a file or folder path and a reveal is available,
@@ -733,6 +735,7 @@ export const RevealPathContext = createContext<((path: string) => void) | null>(
  */
 function CodeSpan({ text, style }: { text: string; style: TextStyle }) {
   const reveal = useContext(RevealPathContext);
+  const { pathOpens } = useEnhancerPreferences();
   const kind = reveal ? pathKind(text) : null;
   if (!reveal || !kind) {
     return (
@@ -745,9 +748,9 @@ function CodeSpan({ text, style }: { text: string; style: TextStyle }) {
     <Text
       selectable
       accessibilityRole="link"
-      onPress={() => reveal(text)}
+      onPress={() => reveal(text, kind)}
       style={style}
-      {...pathLinkProps(kind)}
+      {...pathLinkProps(kind, pathOpens === "panel")}
     >
       {text}
     </Text>

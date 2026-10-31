@@ -90,6 +90,7 @@ settings control that text.
 | --- | --- |
 | Assistant markdown | The plugin's headings, lists and highlighted code blocks. Off hands replies back to Paseo, which also brings back mermaid diagrams, images and its file-path links. |
 | Markdown style | **Document** (airy), **Compact** (tight) or **Terminal** (body in the code face). |
+| File paths in replies | A file path in inline code opens a read-only side panel (default), or shows the file in your file manager. See [Opening files](#opening-files). |
 | Highlight marks | Draws `==text==` as a highlighter mark, in a palette colour or a custom one. Off by default: it is not standard Markdown, and an assistant writes it only if your instructions ask for it. Off shows the equals signs as typed. |
 | Enhanced prompt bubble | Off hands prompts back to Paseo, whose bubble shows pasted images. |
 | Selection actions | Selecting text in a card raises **Copy** and **Add to chat** (desktop and web). |
@@ -198,14 +199,23 @@ A file path in inline code in a reply works the same way: `src/app.ts`, `C:\work
 becomes a link (a `:55` line selector is accepted and ignored). A bare file name needs a common source or
 text extension, so `v1.beta` stays text. The path comes from the agent, so network paths (`\\host\share`,
 `//host/share`) are never linked and the daemon refuses them. The link only shows the file; it never opens
-or runs it. A link carries a file icon and, on hover, the bubble "Show in file manager".
+or runs it. A link carries a file icon and, on hover, a bubble saying what pressing does.
+
+By default pressing a file path opens a read-only **File preview** panel in Paseo's side view, with
+syntax colours and line numbers; a second press replaces the file in the open panel. The panel reads the
+file through a second daemon-side RPC (`file.read`), which is stricter than `file.reveal` because it
+returns contents: the file must be inside the agent's working directory once symbolic links are
+resolved, at most 1 MB, and text. Any other file, and every folder, goes to the file manager instead (the
+panel says why and offers a button). The setting "File paths in replies" switches the whole thing back to
+the file manager.
 
 A folder in inline code links too, with a folder icon and the bubble "Open folder", when it cannot be
 mistaken for prose: it ends with a separator (`src/`, `.\build\`) or starts from a drive or `~` (`C:\work\app`,
 `~/app`). `and/or`, `/api/users` and `/compact` stay text.
 
 A directory path opens that directory. A path the daemon cannot stat does nothing. The link cannot open
-Paseo's own file editor: see the first [limitation](#plugin-sdk-limitations-found-while-building-this).
+Paseo's own file editor, which plugins cannot target: see the first
+[limitation](#plugin-sdk-limitations-found-while-building-this). The side panel is the plugin's own viewer.
 
 ## Finding text
 
