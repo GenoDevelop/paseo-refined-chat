@@ -109,5 +109,13 @@ paseo plugin add genodevelop/refined-chat
 ```
 
 The catalog pins the reviewed commit, so a later release does not reach catalog users
-until it is submitted again through the same form. Approved: v0.4.0, listed as
-`genodevelop/refined-chat` (submission #1645, registry PR #1646).
+until it is submitted again. Approved: v0.5.0, listed as
+`genodevelop/refined-chat` (first listed as v0.4.0: submission #1645, registry PR #1646).
+
+An update does not need the form. Fork `getpaseo/plugins` and open a pull request
+that changes `artifact.commit` and `repository.commit` in
+`plugins/genodevelop/refined-chat.json` to the tagged commit. The registry's
+reviewer is an automated agent that runs every 30 minutes, reads the pinned
+source, fills in the dates itself and merges. v0.5.0 went this way (registry
+PR #1650) and was approved within about two hours. The same record holds the
+`categories`, which the maintainers edit by hand.
