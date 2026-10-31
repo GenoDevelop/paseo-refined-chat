@@ -302,6 +302,12 @@ export function MarkdownView({ text, tokens, variant, marks = false }: MarkdownV
 }
 
 /**
+ * The folder that relative image paths resolve against, when the text is a file
+ * on disk (the side panel) and not a reply. Absolute, or null for a reply.
+ */
+export const ImageBaseContext = createContext<string | null>(null);
+
+/**
  * An image the agent put in its reply. A local file goes through the daemon
  * RPC, because the client may be a phone that cannot reach the agent's disk,
  * and `data:` sources are drawn as they are.
@@ -326,7 +332,13 @@ function MarkdownImage({
   const inline = /^data:image\//i.test(src);
   const remote = /^https?:/i.test(src);
   const path = inline || remote ? undefined : fileUrlToPath(src);
-  const local = useImageFile(path, null);
+  const base = useContext(ImageBaseContext);
+  // A relative path in a file means "beside this file", not "beside the agent".
+  const rooted = path !== undefined && /^([a-zA-Z]:[\\/]|[\\/]|~[\\/])/.test(path);
+  const local = useImageFile(
+    path !== undefined && base !== null && !rooted ? `${base}/${path}` : path,
+    null,
+  );
   const loadable = remote && (loadRemoteImages || approved);
   const remoteInfo = useRemoteImageInfo(loadable ? src : undefined);
 

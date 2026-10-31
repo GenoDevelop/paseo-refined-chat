@@ -4,7 +4,7 @@ import type { PluginWorkspacePanelProps } from "@getpaseo/plugin/client";
 import { useRpc } from "@getpaseo/plugin/client";
 import { ScrollView } from "@getpaseo/plugin/client/react-native";
 import { hostFontEscape } from "./components/host-font-escape";
-import { MarkdownView } from "./components/markdown/markdown-view";
+import { ImageBaseContext, MarkdownView } from "./components/markdown/markdown-view";
 import { SyntaxHighlightBlock } from "./components/syntax-highlight";
 import { buildThemeTokens, radius, type ExtendedThemeTokens } from "./components/theme-tokens";
 import { readFileRpc, revealPathRpc, stripSelector, MAX_PREVIEW_BYTES } from "../shared/file-rpc";
@@ -47,6 +47,14 @@ export function openFilePreview(workspaceId: string, cwd: string, path: string):
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/** The folder holding the file, as an absolute path: the base for the images it names. */
+function fileDirectory(cwd: string, path: string): string {
+  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  const folder = cut === -1 ? "" : path.slice(0, cut);
+  if (/^([a-zA-Z]:[\\/]|[\\/])/.test(path)) return folder;
+  return folder === "" ? cwd : `${cwd}/${folder}`;
 }
 
 type Load =
@@ -180,12 +188,14 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
         <ScrollView style={{ flex: 1 }}>
           {isMarkdown && view === "rendered" ? (
             <View style={{ padding: 16 }}>
-              <MarkdownView
-                text={load.text}
-                tokens={tokens}
-                variant={preferences.markdownVariant}
-                marks={preferences.highlightMarks}
-              />
+              <ImageBaseContext.Provider value={fileDirectory(current.cwd, name)}>
+                <MarkdownView
+                  text={load.text}
+                  tokens={tokens}
+                  variant={preferences.markdownVariant}
+                  marks={preferences.highlightMarks}
+                />
+              </ImageBaseContext.Provider>
             </View>
           ) : (
             <SyntaxHighlightBlock
