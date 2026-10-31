@@ -117,5 +117,5 @@ that changes `artifact.commit` and `repository.commit` in
 `plugins/genodevelop/refined-chat.json` to the tagged commit. The registry's
 reviewer is an automated agent that runs every 30 minutes, reads the pinned
 source, fills in the dates itself and merges. v0.5.0 went this way (registry
-PR #1650) and was approved within about two hours. The same record holds the
+PR #1650). The same record holds the
 `categories`, which the maintainers edit by hand.
