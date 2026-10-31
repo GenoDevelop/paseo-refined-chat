@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { open, readFile, stat, type FileHandle } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, isAbsolute, resolve } from "node:path";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { locateTextRpc, revealPathRpc, stripSelector } from "./shared/file-rpc";
@@ -444,7 +445,11 @@ export default function contribute(server: PluginServerContext) {
     const requested = stripSelector(input.path);
     if (!requested) return { revealed: null, error: "No path" };
 
-    const target = isAbsolute(requested) ? requested : resolve(input.cwd, requested);
+    // `resolve` also turns `C:/a/b` into `C:\a\b`, which Explorer's `/select,`
+    // needs: with forward slashes it opens a default folder instead.
+    const target = /^~[\\/]/.test(requested)
+      ? resolve(homedir(), requested.slice(2))
+      : resolve(input.cwd, requested);
     // A path in a reply is the agent's text. On Windows a network path makes
     // `stat` contact that host, which can hand it the user's credentials.
     if (target.startsWith("\\\\") || target.startsWith("//")) {
