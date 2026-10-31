@@ -69,6 +69,20 @@ export function siblingPath(from: string, link: string): string {
 }
 
 /**
+ * A path as a card shows it: relative to the working directory when it lies
+ * inside it, otherwise unchanged. Separators and case are compared loosely
+ * (Windows paths come in both), and the rest keeps its own separators.
+ */
+export function displayPath(path: string, cwd: string | null | undefined): string {
+  if (!cwd) return path;
+  const base = cwd.replace(/[\\/]+$/, "");
+  if (base === "" || path.length <= base.length + 1) return path;
+  const head = path.slice(0, base.length);
+  const same = head.replace(/\\/g, "/").toLowerCase() === base.replace(/\\/g, "/").toLowerCase();
+  return same && /[\\/]/.test(path[base.length] ?? "") ? path.slice(base.length + 1) : path;
+}
+
+/**
  * The anchor each heading gets, as GitHub makes it: lower case, anything but
  * letters, digits, spaces, hyphens and underscores dropped, spaces turned into
  * hyphens, and a repeated slug numbered (`usage`, `usage-1`).

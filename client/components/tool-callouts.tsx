@@ -24,6 +24,7 @@ import { selectableSurface, unselectable } from "./selection";
 import { selectionCodeText, selectionSurface } from "./selection-actions";
 import type { ToolCalloutData } from "../../shared/contracts";
 import { lineSelector } from "../../shared/file-rpc";
+import { displayPath } from "../file-link";
 import { shouldAutoCollapse } from "../tool-collapse";
 import type { AutoCollapseRules } from "../tool-collapse";
 
@@ -77,6 +78,8 @@ interface ToolCalloutProps {
    * diff without line numbers, since its own positions are relative.
    */
   editLine?: number | null;
+  /** The agent's working directory: a file path inside it is shown relative to it. */
+  cwd?: string | null;
   /** Lines of command output shown before the middle folds; 0 shows all. */
   shellMaxLines?: number;
   /** Lines of code and diffs shown before the rest folds; 0 shows all. */
@@ -91,6 +94,7 @@ export function ToolCallout({
   onRevealPath,
   imageFile,
   editLine,
+  cwd,
   shellMaxLines = 0,
   codeMaxLines = 0,
 }: ToolCalloutProps) {
@@ -907,7 +911,11 @@ export function ToolCallout({
               <SyntaxHighlightBlock
                 code={data.code || "// [Empty content or pending stream]"}
                 language={data.language ?? "text"}
-                filename={data.filePath ? `${data.filePath} ${data.lineRange || ""}` : undefined}
+                filename={
+                  data.filePath
+                    ? `${displayPath(data.filePath, cwd)} ${data.lineRange || ""}`
+                    : undefined
+                }
                 tokens={tokens}
                 showLineNumbers={Boolean(data.code)}
                 startLine={data.startLine}
@@ -940,7 +948,7 @@ export function ToolCallout({
                   : data.code || "// [Edit: diff applied]"
               }
               language="diff"
-              filename={data.filePath}
+              filename={data.filePath ? displayPath(data.filePath, cwd) : undefined}
               tokens={tokens}
               relativeDiff={data.diffComputed && !editLine}
               maxLines={codeLimit}

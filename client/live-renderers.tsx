@@ -727,6 +727,7 @@ export function LiveToolCallRenderer({
         onRevealPath={handleRevealPath}
         imageFile={imageFile}
         editLine={editLine}
+        cwd={cwd}
         shellMaxLines={preferences.shellMaxLines}
         codeMaxLines={preferences.codeMaxLines}
       />
