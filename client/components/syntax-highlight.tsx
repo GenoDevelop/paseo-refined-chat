@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { copyText } from "@getpaseo/plugin/client/react-native";
 import { LINK_UNDERLINE, plainLinkProps } from "./markdown/link-style";
@@ -36,6 +36,10 @@ interface SyntaxHighlightProps {
   compact?: boolean;
   /** Shows the file in the machine's own file manager. Omitted: plain label. */
   onRevealFile?: () => void;
+  /** A row to mark, counted from 1 on the file's own numbering (see `startLine`). */
+  highlightLine?: number;
+  /** Where the marked row sits, in pixels from the top of the block, once it is laid out. */
+  onHighlightPosition?: (y: number) => void;
 }
 
 const STATIC_KEYWORDS: Record<string, true> = {
@@ -489,8 +493,17 @@ export function SyntaxHighlightBlock({
   filename,
   compact = false,
   onRevealFile,
+  highlightLine,
+  onHighlightPosition,
 }: SyntaxHighlightProps) {
   const [copied, setCopied] = useState(false);
+  // The marked row's offset inside the code area and the code area's inside the
+  // block: layout reports each separately and in no fixed order.
+  const [rowY, setRowY] = useState<number | null>(null);
+  const [areaY, setAreaY] = useState<number | null>(null);
+  useEffect(() => {
+    if (rowY !== null && areaY !== null) onHighlightPosition?.(areaY + rowY);
+  }, [rowY, areaY, onHighlightPosition]);
 
   // The host clipboard works on every platform; `navigator.clipboard` is
   // missing on native. "Copied" shows only once the copy has gone through.
@@ -706,7 +719,11 @@ export function SyntaxHighlightBlock({
         </View>
       )}
 
-      <View {...selectionCodeSurface} style={styles.codeArea}>
+      <View
+        {...selectionCodeSurface}
+        style={styles.codeArea}
+        onLayout={(event) => setAreaY(event.nativeEvent.layout.y)}
+      >
         {lines.slice(0, folded && plan ? plan.head : lines.length).map((line, idx) => {
           const shikiLine = shikiLines?.[idx];
           // The patched file's tokens, and only for a line the file owns. A
@@ -726,12 +743,15 @@ export function SyntaxHighlightBlock({
                       : tokens.syntax.diffRemoveEmphasisBg,
                 }
               : undefined;
+          const marked = highlightLine !== undefined && startLine + idx === highlightLine;
           const lineBg =
             kind === "add"
               ? tokens.syntax.diffAddBg
               : kind === "remove"
                 ? tokens.syntax.diffRemoveBg
-                : "transparent";
+                : marked
+                  ? tokens.accentBg
+                  : "transparent";
 
           // Adjacent added and removed rows form one hunk. Only the hunk's
           // outer edges round, so a delete-to-add transition stays flush.
@@ -744,6 +764,7 @@ export function SyntaxHighlightBlock({
           return (
             <View
               key={idx}
+              onLayout={marked ? (event) => setRowY(event.nativeEvent.layout.y) : undefined}
               style={[
                 styles.lineRow,
                 {

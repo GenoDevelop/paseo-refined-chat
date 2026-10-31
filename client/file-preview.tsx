@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import type { PluginWorkspacePanelProps } from "@getpaseo/plugin/client";
 import { useRpc } from "@getpaseo/plugin/client";
@@ -9,10 +16,19 @@ import { isImagePath, useImageFile, type ImageFile } from "./image-file";
 import { ImageBaseContext, MarkdownView } from "./components/markdown/markdown-view";
 import { SyntaxHighlightBlock } from "./components/syntax-highlight";
 import { buildThemeTokens, radius, type ExtendedThemeTokens } from "./components/theme-tokens";
-import { readFileRpc, revealPathRpc, stripSelector, MAX_PREVIEW_BYTES } from "../shared/file-rpc";
+import {
+  lineSelector,
+  readFileRpc,
+  revealPathRpc,
+  stripSelector,
+  MAX_PREVIEW_BYTES,
+} from "../shared/file-rpc";
+import { MAX_IMAGE_BYTES } from "../shared/image-rpc";
 import { useEnhancerPreferences } from "./preferences";
 
 export const FILE_PREVIEW_PANEL_ID = "file-preview";
+
+const MARKDOWN_PADDING = 16;
 
 interface PreviewTarget {
   cwd: string;
@@ -65,7 +81,8 @@ type Load =
   | { state: "refused"; message: string };
 
 const REFUSALS = {
-  outside: "This file is outside the project folder, so the panel does not read it.",
+  outside:
+    "This file is outside the project folder, so the panel does not read it. Advanced settings can allow that.",
   binary: "This is not a text file.",
   large: `This file is larger than ${MAX_PREVIEW_BYTES / 1024 / 1024} MB.`,
   missing: "This file was not found.",
@@ -94,11 +111,37 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
   const image = useImageFile(isImage ? current.path : undefined, current?.cwd ?? null);
   const [enlarged, setEnlarged] = useState(false);
 
+  // A selector such as `app.ts:55` marks that line and scrolls it into view.
+  const scroller = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const line = current ? lineSelector(current.path) : null;
+  const viewport = useRef(0);
+  // Layout reports again when a picture loads or the panel resizes; the reader
+  // may have scrolled by then, so each file and view is scrolled once.
+  const scrolled = useRef(false);
+  const scrollToLine = useCallback((y: number) => {
+    if (scrolled.current) return;
+    scrolled.current = true;
+    // The row sits a third of the way down, so the lines before it give context.
+    scroller.current?.scrollTo({ y: Math.max(0, y - viewport.current / 3), animated: false });
+  }, []);
+
+  // A file opens in its default view: Markdown rendered.
+  useEffect(() => {
+    setView("rendered");
+  }, [current]);
+  useEffect(() => {
+    scrolled.current = false;
+  }, [current, view]);
+
   useEffect(() => {
     if (!current || isImagePath(current.path)) return;
     let stale = false;
     setLoad({ state: "loading" });
-    readFile({ cwd: current.cwd, path: current.path }).then(
+    readFile({
+      cwd: current.cwd,
+      path: current.path,
+      anywhere: preferences.previewOutsideProject,
+    }).then(
       (result) => {
         if (stale) return;
         setLoad(
@@ -114,7 +157,7 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
     return () => {
       stale = true;
     };
-  }, [current, readFile]);
+  }, [current, readFile, preferences.previewOutsideProject]);
 
   const handleReveal = useCallback(() => {
     if (current) void revealPath({ cwd: current.cwd, path: current.path }).catch(() => {});
@@ -222,25 +265,38 @@ export function FilePreviewPanel({ theme }: PluginWorkspacePanelProps) {
           onOpen={() => setEnlarged(true)}
         />
       ) : load.state === "ready" ? (
-        <ScrollView style={{ flex: 1 }}>
+        <ScrollView
+          ref={scroller}
+          style={{ flex: 1 }}
+          onLayout={(event) => {
+            viewport.current = event.nativeEvent.layout.height;
+          }}
+        >
           {isMarkdown && view === "rendered" ? (
-            <View style={{ padding: 16 }}>
+            <View style={{ padding: MARKDOWN_PADDING }}>
               <ImageBaseContext.Provider value={fileDirectory(current.cwd, name)}>
                 <MarkdownView
                   text={load.text}
                   tokens={tokens}
                   variant={preferences.markdownVariant}
                   marks={preferences.highlightMarks}
+                  line={line ?? undefined}
+                  // The text sits below the panel's padding.
+                  onLinePosition={(y) => scrollToLine(y + MARKDOWN_PADDING)}
                 />
               </ImageBaseContext.Provider>
             </View>
           ) : (
+            // Keyed by the whole path so a new line selector starts from a fresh layout.
             <SyntaxHighlightBlock
+              key={current.path}
               code={load.text}
               filename={name}
               tokens={tokens}
               showLineNumbers
               compact
+              highlightLine={line ?? undefined}
+              onHighlightPosition={scrollToLine}
             />
           )}
         </ScrollView>
@@ -272,6 +328,15 @@ function PictureBody({
 }) {
   if (file === null) return <Message tokens={tokens} text="Loading…" />;
   if (file.dataUri === null) {
+    // The daemon reports the size of a picture it declined to read.
+    if (file.bytes && file.bytes > MAX_IMAGE_BYTES) {
+      return (
+        <Message
+          tokens={tokens}
+          text={`This picture is ${formatBytes(file.bytes)}, over the ${MAX_IMAGE_BYTES / 1024 / 1024} MB the panel draws. Open it in the file manager.`}
+        />
+      );
+    }
     return <Message tokens={tokens} text={file.error ?? "The image could not be read."} />;
   }
   const ratio = file.width && file.height ? file.width / file.height : 1;

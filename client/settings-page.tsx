@@ -1317,6 +1317,16 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         />
 
         <ToggleRow
+          title="Preview files outside the project (at your own risk)"
+          description="Off: the side panel reads only files inside the agent's working directory. On: it also reads any text file the path points to, up to 1 MB. The agent writes the path, so a prompt injection can put a link to a private file, such as ~/.ssh/config, in a reply; the file is read only when you press the link, and its contents then show on screen and in screenshots. Turn this on only if you accept that."
+          value={preferences.previewOutsideProject}
+          onChange={(previewOutsideProject) =>
+            updateEnhancerPreferences({ previewOutsideProject })
+          }
+          tokens={tokens}
+        />
+
+        <ToggleRow
           title="Let Paseo fold tool calls and turns"
           description="Only acts when Paseo's Chat display is Collapse tool calls or Collapse turns. Paseo can fold only its own rows, so with this on, tool calls and reasoning (and, for Collapse turns, prompts and replies, which then ignore the reply size and spacing set here) are drawn by Paseo instead of this plugin. Off keeps this plugin's cards in every mode, and Paseo does not fold them. Rows are drawn once when they load, so after changing this or Paseo's Chat display, reload the plugin or restart the app."
           value={preferences.yieldToHostFolding}

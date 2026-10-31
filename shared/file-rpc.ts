@@ -15,6 +15,18 @@ export function stripSelector(path: string): string {
 }
 
 /**
+ * The line a path's selector names (`main.ts:55`, `main.ts:55-85`, `main.ts:55:3`),
+ * or null when there is none. A range or column gives its first number.
+ */
+export function lineSelector(path: string): number | null {
+  const trimmed = path.trim();
+  const tail = /^[a-zA-Z]:[\\/]/.test(trimmed) ? trimmed.slice(3) : trimmed;
+  const match = /:(\d+)(?:[:-]\d+)?$/.exec(tail);
+  const line = match ? Number(match[1]) : NaN;
+  return Number.isSafeInteger(line) && line > 0 ? line : null;
+}
+
+/**
  * Shows a path in the machine's own file manager.
  *
  * The client cannot reach the operating system, and Paseo exposes no file
@@ -68,7 +80,9 @@ export const MAX_PREVIEW_BYTES = 1024 * 1024;
  * so it is stricter than `file.reveal`: the file must sit inside the agent's
  * working directory once symbolic links are resolved, be at most
  * `MAX_PREVIEW_BYTES`, and be text. Any other file answers with the reason and
- * no contents, and the panel offers the file manager instead.
+ * no contents, and the panel offers the file manager instead. `anywhere` is the
+ * reader's own setting and lifts the working-directory rule only; network
+ * paths, size and the text check still apply.
  */
 export const readFileRpc = defineRpc({
   // The host accepts lower-case, dotted RPC names only.
@@ -76,6 +90,7 @@ export const readFileRpc = defineRpc({
   input: z.object({
     cwd: z.string(),
     path: z.string(),
+    anywhere: z.boolean().optional(),
   }),
   output: z.object({
     text: z.string().nullable(),

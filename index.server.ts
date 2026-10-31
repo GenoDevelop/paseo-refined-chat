@@ -11,7 +11,7 @@ import {
   stripSelector,
 } from "./shared/file-rpc";
 import { type HighlightLine, type HighlightToken, highlightRpc } from "./shared/highlight-rpc";
-import { imageRpc } from "./shared/image-rpc";
+import { MAX_IMAGE_BYTES, imageRpc } from "./shared/image-rpc";
 
 /**
  * Image types worth inlining, and the mime each one needs in its data URI.
@@ -32,12 +32,6 @@ const IMAGE_MIMES: Record<string, string> = {
   svg: "image/svg+xml",
 };
 
-/**
- * A data URI travels through the RPC as base64 in a JSON string, so the wire
- * cost is about a third above the file itself. Past this the thumbnail is not
- * worth the message, and the card reports the size instead of drawing it.
- */
-const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
 /** A file past this is not scanned for an edit's position; no number is drawn. */
 const MAX_LOCATE_BYTES = 5 * 1024 * 1024;
@@ -500,7 +494,10 @@ export default function contribute(server: PluginServerContext) {
       // points elsewhere does not pass for a file inside it.
       const [real, root] = await Promise.all([realpath(target), realpath(input.cwd)]);
       const inside = relative(root, real);
-      if (inside === ".." || inside.startsWith(`..${sep}`) || isAbsolute(inside)) {
+      if (
+        !input.anywhere &&
+        (inside === ".." || inside.startsWith(`..${sep}`) || isAbsolute(inside))
+      ) {
         return { text: null, reason: "outside" } as const;
       }
       const entry = await stat(real);

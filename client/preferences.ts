@@ -118,6 +118,13 @@ export interface EnhancerPreferences {
    * the machine: off by default, and the reader's own risk when turned on.
    */
   loadRemoteImages: boolean;
+  /**
+   * Lets the side panel read a text file outside the agent's working directory.
+   * The agent writes the path, so a prompt injection could make a reply link to
+   * `~/.ssh/config`; the read still needs a press, but the contents then reach
+   * the screen. Off by default, and the reader's own risk when turned on.
+   */
+  previewOutsideProject: boolean;
   frostedGlass: boolean;
   /**
    * A light that follows the pointer across a card. Web and desktop only:
@@ -195,6 +202,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   codeMaxLines: 30,
   promptMaxLines: 15,
   loadRemoteImages: false,
+  previewOutsideProject: false,
   frostedGlass: true,
   pointerGlow: true,
   enhancedUserBubble: true,
@@ -313,6 +321,7 @@ function loadPreferences(): EnhancerPreferences {
       ),
       // Only an explicit `true` counts: anything else stays the safe default.
       loadRemoteImages: candidate.loadRemoteImages === true,
+      previewOutsideProject: candidate.previewOutsideProject === true,
       frostedGlass:
         typeof candidate.frostedGlass === "boolean"
           ? candidate.frostedGlass

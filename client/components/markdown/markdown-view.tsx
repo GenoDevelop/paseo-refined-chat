@@ -30,6 +30,12 @@ export interface MarkdownViewProps {
   variant: MarkdownVariant;
   /** Draws `==text==` as a highlighter mark; off keeps the equals signs as typed. */
   marks?: boolean;
+  /**
+   * A line of the source (counted from 1) to mark: the block that holds it is
+   * tinted, and `onLinePosition` gets its offset from the top of the text.
+   */
+  line?: number;
+  onLinePosition?: (y: number) => void;
 }
 
 type MdTableBlock = Extract<MdBlock, { kind: "table" }>;
@@ -242,8 +248,23 @@ function scaleMetrics(metrics: VariantMetrics, scale: number, spacing: number): 
   };
 }
 
-export function MarkdownView({ text, tokens, variant, marks = false }: MarkdownViewProps) {
-  const blocks = useMemo(() => parseMarkdown(text), [text]);
+export function MarkdownView({
+  text,
+  tokens,
+  variant,
+  marks = false,
+  line,
+  onLinePosition,
+}: MarkdownViewProps) {
+  const { blocks, starts } = useMemo(() => {
+    const opened: number[] = [];
+    return { blocks: parseMarkdown(text, opened), starts: opened };
+  }, [text]);
+  // The last block that opened on or before the line holds it.
+  let marked = -1;
+  if (line !== undefined) {
+    for (let at = 0; at < starts.length && starts[at]! <= line - 1; at++) marked = at;
+  }
   const metrics = useMemo(
     () => scaleMetrics(VARIANT_METRICS[variant], tokens.scales.reply, tokens.replySpacing),
     [variant, tokens],
@@ -258,13 +279,24 @@ export function MarkdownView({ text, tokens, variant, marks = false }: MarkdownV
     [styles, tokens, metrics, codeMaxLines],
   );
 
+  const markBlock = (node: React.ReactNode, at: number) => (
+    <View
+      key={`m${at}`}
+      onLayout={(event) => onLinePosition?.(event.nativeEvent.layout.y)}
+      style={{ backgroundColor: tokens.accentBg, borderRadius: radius.block }}
+    >
+      {node}
+    </View>
+  );
+
   // Pictures that follow one another sit in one row that wraps, not one under
   // the other: a reply with several screenshots reads as a strip, not a column.
   const rendered: React.ReactNode[] = [];
   for (let index = 0; index < blocks.length; index++) {
     const block = blocks[index]!;
     if (block.kind !== "image") {
-      rendered.push(renderBlock(block, `b${index}`, index === 0, context));
+      const node = renderBlock(block, `b${index}`, index === 0, context);
+      rendered.push(index === marked ? markBlock(node, index) : node);
       continue;
     }
     const run: Extract<MdBlock, { kind: "image" }>[] = [];
@@ -273,7 +305,7 @@ export function MarkdownView({ text, tokens, variant, marks = false }: MarkdownV
       run.push(next);
       end++;
     }
-    rendered.push(
+    const strip = (
       <View
         key={`b${index}`}
         style={[
@@ -289,8 +321,9 @@ export function MarkdownView({ text, tokens, variant, marks = false }: MarkdownV
             tokens={tokens}
           />
         ))}
-      </View>,
+      </View>
     );
+    rendered.push(marked >= index && marked < end ? markBlock(strip, index) : strip);
     index = end - 1;
   }
 

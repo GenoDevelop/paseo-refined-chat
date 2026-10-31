@@ -130,6 +130,7 @@ for, then folds them again when it closes. Text selection covers only the lines 
 | Setting | Effect |
 | --- | --- |
 | Load remote images automatically (at your own risk) | Off by default. See [Images](#images). |
+| Preview files outside the project (at your own risk) | Off by default. Lets the File preview panel read a text file outside the agent's working directory. See [Opening files](#opening-files). |
 | Let Paseo fold tool calls and turns | Off by default. With it on and Paseo's Chat display set to Collapse tool calls or Collapse turns, those rows are drawn by Paseo, which can only fold its own rows. Reload the plugin or restart the app after changing it. |
 
 ---
@@ -207,10 +208,12 @@ press replaces the file in the open panel. The panel reads the
 file through a second daemon-side RPC (`file.read`), which is stricter than `file.reveal` because it
 returns contents: the file must be inside the agent's working directory once symbolic links are
 resolved, at most 1 MB, and text. Any other file, and every folder, goes to the file manager instead (the
-panel says why and offers a button). A picture opens drawn, with a Full screen button, through the same
+panel says why and offers a button). A path with a line (`app.ts:55`) marks that line and scrolls to it; for a range the first line is marked. In a rendered Markdown file the block holding the line is tinted. A picture opens drawn, with a Full screen button, through the same
 image RPC that draws pictures on tool cards: it reads only recognised image types of up to 3 MB and, unlike
 `file.read`, is not limited to the working directory. The setting "File paths in replies" switches the whole thing back to
-the file manager.
+the file manager. The Advanced setting "Preview files outside the project" lifts the working-directory rule
+for text files (network paths, the 1 MB limit and the text check still apply); it is off by default because
+the agent writes the path, so a prompt injection can link a private file such as `~/.ssh/config`.
 
 A folder in inline code links too, with a folder icon and the bubble "Open folder", when it cannot be
 mistaken for prose: it ends with a separator (`src/`, `.\build\`) or starts from a drive or `~` (`C:\work\app`,
