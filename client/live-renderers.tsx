@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { collapseKind } from "./tool-collapse";
 import { View } from "react-native";
 import { useAgent, usePaseo, useRpc } from "@getpaseo/plugin/client";
 import { useRevealedText } from "@getpaseo/plugin/client/react-native";
@@ -646,8 +647,12 @@ export function LiveToolCallRenderer({
     });
   }, [hubData, agentId]);
 
-  // Collapse completed tools by default; expand active or failed tools
-  const isExpanded = data.status === "running" || data.status === "failed";
+  // Collapse completed tools by default; expand active or failed tools. A kind the reader chose to start folded stays folded while it runs, and a
+  // failure opens it regardless. An ask card holds a question, so it never starts folded.
+  const startsFolded =
+    calloutData.tool !== "ask" &&
+    preferences.startCollapsedKinds.includes(collapseKind(calloutData.tool));
+  const isExpanded = data.status === "failed" || (data.status === "running" && !startsFolded);
 
   // The daemon side owns the shell, so revealing a file is one RPC. A path the
   // daemon cannot stat answers with an error the press simply ignores.
@@ -680,7 +685,11 @@ export function LiveToolCallRenderer({
         data={calloutData}
         tokens={tokens}
         defaultExpanded={isExpanded}
-        autoCollapse={preferences.autoCollapseTools}
+        autoCollapse={
+          preferences.autoCollapseKinds.length > 0
+            ? { kinds: preferences.autoCollapseKinds, minLines: preferences.autoCollapseMinLines }
+            : undefined
+        }
         onRevealPath={handleRevealPath}
         imageFile={imageFile}
         editLine={editLine}
@@ -762,7 +771,10 @@ export function LiveReasoningRenderer({
       <ReasoningTrace
         data={reasoningData}
         tokens={tokens}
-        defaultExpanded={preferences.collapseThinking ? false : data.phase === "streaming"}
+        defaultExpanded={
+          !preferences.startCollapsedKinds.includes("thinking") && data.phase === "streaming"
+        }
+        autoCollapse={preferences.autoCollapseKinds.includes("thinking")}
       />
     </View>
   );

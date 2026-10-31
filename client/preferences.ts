@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from "react";
+import { COLLAPSE_KINDS, sanitizeCollapseKinds } from "./tool-collapse";
+import type { CollapseKind } from "./tool-collapse";
 
 export const ACCENT_PRESETS = {
   host: undefined,
@@ -78,12 +80,22 @@ export interface EnhancerPreferences {
    */
   enhancedUserBubble: boolean;
   /**
-   * Folds a finished tool card back up on its own. A card the user opened or
-   * closed keeps its state, and a failed call always stays open.
+   * Which cards fold back up on their own once they finish; none turns the
+   * folding off. A card the user opened or closed keeps its state, and a failed
+   * call always stays open.
    */
-  autoCollapseTools: boolean;
-  /** Starts a thinking stream folded instead of following it live. */
-  collapseThinking: boolean;
+  autoCollapseKinds: CollapseKind[];
+  /**
+   * A finished card with fewer lines than this stays open, since reopening it
+   * would cost a click for almost nothing. Zero folds every card.
+   */
+  autoCollapseMinLines: number;
+  /**
+   * Cards drawn folded from the start, even while their call still runs; a
+   * failed call opens anyway. Unlike `autoCollapseKinds`, which folds a card
+   * once it finishes, this keeps it closed throughout.
+   */
+  startCollapsedKinds: CollapseKind[];
   /**
    * The Copy / Add to chat bar that follows a highlight. Web and desktop only:
    * iOS and Android route selection through the platform's own menu, which the
@@ -125,8 +137,9 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   pointerGlow: true,
   enhancedUserBubble: true,
   // Preserve Beautiful Chat's original behavior until explicitly enabled.
-  autoCollapseTools: false,
-  collapseThinking: false,
+  autoCollapseKinds: [],
+  autoCollapseMinLines: 0,
+  startCollapsedKinds: [],
   selectionActions: true,
   assistantMarkdown: true,
   markdownVariant: "document",
@@ -142,6 +155,38 @@ function storage(): Storage | undefined {
 
 function isAccentPreset(value: unknown): value is AccentPreset {
   return typeof value === "string" && value in ACCENT_PRESETS;
+}
+
+/**
+ * Reads the kinds that fold on finishing, carrying over the "Auto-collapse
+ * tools" switch this list replaced: off meant no folding, on meant every kind.
+ */
+function loadAutoCollapseKinds(
+  candidate: Partial<EnhancerPreferences> & { autoCollapseTools?: unknown },
+): CollapseKind[] {
+  if (candidate.autoCollapseTools === false) return [];
+  if (Array.isArray(candidate.autoCollapseKinds)) {
+    return sanitizeCollapseKinds(candidate.autoCollapseKinds, []);
+  }
+  return candidate.autoCollapseTools === true ? [...COLLAPSE_KINDS] : [];
+}
+
+/**
+ * Reads the start-collapsed kinds, carrying over the two switches this list
+ * replaced: "Collapse thinking" and "Open while running".
+ */
+function loadStartCollapsedKinds(
+  candidate: Partial<EnhancerPreferences> & { collapseThinking?: unknown; openWhileRunning?: unknown },
+): CollapseKind[] {
+  if (Array.isArray(candidate.startCollapsedKinds)) {
+    return sanitizeCollapseKinds(candidate.startCollapsedKinds, []);
+  }
+  const legacy: CollapseKind[] = [];
+  if (candidate.openWhileRunning === false) {
+    legacy.push(...COLLAPSE_KINDS.filter((kind) => kind !== "thinking"));
+  }
+  if (candidate.collapseThinking === true) legacy.push("thinking");
+  return legacy;
 }
 
 function loadPreferences(): EnhancerPreferences {
@@ -177,14 +222,12 @@ function loadPreferences(): EnhancerPreferences {
         typeof candidate.enhancedUserBubble === "boolean"
           ? candidate.enhancedUserBubble
           : DEFAULT_PREFERENCES.enhancedUserBubble,
-      autoCollapseTools:
-        typeof candidate.autoCollapseTools === "boolean"
-          ? candidate.autoCollapseTools
-          : DEFAULT_PREFERENCES.autoCollapseTools,
-      collapseThinking:
-        typeof candidate.collapseThinking === "boolean"
-          ? candidate.collapseThinking
-          : DEFAULT_PREFERENCES.collapseThinking,
+      autoCollapseKinds: loadAutoCollapseKinds(candidate),
+      autoCollapseMinLines: sanitizeLineLimit(
+        candidate.autoCollapseMinLines,
+        DEFAULT_PREFERENCES.autoCollapseMinLines,
+      ),
+      startCollapsedKinds: loadStartCollapsedKinds(candidate),
       selectionActions:
         typeof candidate.selectionActions === "boolean"
           ? candidate.selectionActions

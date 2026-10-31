@@ -18,14 +18,34 @@ interface ReasoningTraceProps {
   data: ReasoningTraceData;
   tokens: ExtendedThemeTokens;
   defaultExpanded?: boolean;
+  /** Folds the trace once the thought ends, unless the reader opened or closed it. */
+  autoCollapse?: boolean;
 }
 
-export function ReasoningTrace({ data, tokens, defaultExpanded = false }: ReasoningTraceProps) {
+export function ReasoningTrace({
+  data,
+  tokens,
+  defaultExpanded = false,
+  autoCollapse = false,
+}: ReasoningTraceProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [touched, setTouched] = useState(false);
+  const toggle = useCallback(() => {
+    setTouched(true);
+    setIsExpanded((previous) => !previous);
+  }, []);
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
 
   const durationFormatted = (data.durationMs / 1000).toFixed(1);
   const isThinking = data.status === "thinking";
+
+  // A trace that was open only because it streamed folds once the thought ends.
+  const wasThinking = useRef(isThinking);
+  useEffect(() => {
+    const finished = wasThinking.current && !isThinking;
+    wasThinking.current = isThinking;
+    if (finished && autoCollapse && !touched) setIsExpanded(false);
+  }, [isThinking, autoCollapse, touched]);
 
   // The rail is drawn to measured tick positions rather than a percentage of
   // the container: step rows have different heights, so a fraction of the
@@ -242,7 +262,7 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
       {...surfaceProps(frosted, glowing(tokens.isDark), selectionSurface)}
       style={styles.wrapper}
     >
-      <Pressable onPress={() => setIsExpanded((prev) => !prev)} style={styles.header}>
+      <Pressable onPress={toggle} style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.iconBubble}>
             <Breathe active={isThinking}>
@@ -375,7 +395,10 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
             {/* The fold control also lives at the bottom edge: a stream that
                 ran long puts the header a screen away. */}
             <Pressable
-              onPress={() => setIsExpanded(false)}
+              onPress={() => {
+                setTouched(true);
+                setIsExpanded(false);
+              }}
               style={styles.collapseLink}
               hitSlop={6}
               accessibilityRole="button"
