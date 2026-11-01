@@ -36,6 +36,7 @@ import {
   type PaletteColor,
   type CodeFontPreference,
   type MonoFontPreference,
+  type CardRunCollapsePreference,
   type PathOpensPreference,
   type UiFontPreference,
 } from "./preferences";
@@ -1217,11 +1218,26 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
       >
         <ToggleRow
           title="Bar over runs of cards"
-          description="Three or more tool and reasoning cards in a row get a bar above the first one, with their count and a control that hides all of them or shows them again. Off by default."
+          description="Two or more tool and reasoning cards in a row get a bar above the first one. It says what they did and how they are doing, and one press hides all the others or shows them again. Off by default."
           value={preferences.cardRunBar}
           onChange={(cardRunBar) => updateEnhancerPreferences({ cardRunBar })}
           tokens={tokens}
         />
+
+        {preferences.cardRunBar && (
+          <ChoiceRow<CardRunCollapsePreference>
+            title="Collapse runs of cards"
+            description="Whether a run closes on its own. Never leaves it to the bar. When finished closes it once every card has ended. Always closes it as soon as it has two cards, and the cards that follow. A failed card keeps its run open, as it keeps itself open, unless its kind starts collapsed. A run you opened or closed with the bar keeps that state."
+            value={preferences.cardRunCollapse}
+            options={[
+              { value: "never", label: "Never" },
+              { value: "finished", label: "When finished" },
+              { value: "always", label: "Always" },
+            ]}
+            onChange={(cardRunCollapse) => updateEnhancerPreferences({ cardRunCollapse })}
+            tokens={tokens}
+          />
+        )}
 
         <MultiChoiceRow<CollapseKind>
           title="Cards that start collapsed"

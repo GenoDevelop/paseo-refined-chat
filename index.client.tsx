@@ -12,7 +12,13 @@ import { installLinkStyle } from "./client/components/markdown/link-style";
 import { extractPromptImages } from "./client/prompt-images";
 import { getEnhancerPreferences } from "./client/preferences";
 import { yieldsToHost } from "./client/host-chat-display";
-import { isCardHidden, onHiddenChange, reasoningCardId, toolCardId } from "./client/card-runs";
+import {
+  isCardHidden,
+  noteCardStatus,
+  onHiddenChange,
+  reasoningCardId,
+  toolCardId,
+} from "./client/card-runs";
 import {
   LiveToolCallRenderer,
   LiveReasoningRenderer,
@@ -26,8 +32,8 @@ import {
 type JsonValue = boolean | null | number | string | JsonValue[] | { [key: string]: JsonValue };
 
 /** True for a card a bar hid, while the bar setting is on. */
-function hiddenByBar(id: string | undefined): boolean {
-  return id !== undefined && getEnhancerPreferences().cardRunBar && isCardHidden(id);
+function hiddenByBar(id: string): boolean {
+  return getEnhancerPreferences().cardRunBar && isCardHidden(id);
 }
 
 function toJsonValue(value: unknown): JsonValue {
@@ -74,7 +80,14 @@ export default function contribute(client: PluginClientContext) {
     transform({ item, phase }) {
       if (item.type !== "tool_call") return undefined;
       if (yieldsToHost("tool_call")) return undefined;
-      if (hiddenByBar(toolCardId(item.callId))) return { items: [] };
+      const toolId = toolCardId(item.callId);
+      if (toolId && hiddenByBar(toolId)) {
+        noteCardStatus(
+          toolId,
+          item.status === "running" ? "running" : item.status === "failed" ? "failed" : "done",
+        );
+        return { items: [] };
+      }
       return {
         items: [
           {
@@ -116,7 +129,11 @@ export default function contribute(client: PluginClientContext) {
     transform({ item, phase }) {
       if (item.type !== "reasoning") return undefined;
       if (yieldsToHost("reasoning")) return undefined;
-      if (hiddenByBar(reasoningCardId(item.text))) return { items: [] };
+      const reasoningId = reasoningCardId(item.text);
+      if (hiddenByBar(reasoningId)) {
+        noteCardStatus(reasoningId, phase === "streaming" ? "running" : "done");
+        return { items: [] };
+      }
       return {
         items: [
           {
