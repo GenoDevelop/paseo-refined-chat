@@ -1,5 +1,5 @@
 /**
- * Shared types and data contracts for OMP Chat Enhancer plugin.
+ * Shared types and data contracts for the Refined Chat plugin.
  * Used across client components and server handlers.
  */
 

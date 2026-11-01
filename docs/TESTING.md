@@ -1,7 +1,7 @@
 # Manual verification guide
 
 There is intentionally **no hosted CI**. Run these checks locally before merging
-this PR and after updating the Paseo SDK.
+a change and after updating the Paseo SDK.
 
 ## Static check
 
@@ -46,6 +46,26 @@ No GitHub Actions minutes are consumed.
   diff "Not applied".
 - Verify the **Collapse** action at the bottom of an expanded long card.
 - Switch the rules off again and verify the original display returns.
+
+## File preview
+
+Use a project that holds a Markdown file with a heading, a link to another file and a link to a heading.
+
+- Press a file path in inline code in a reply: the side panel opens with the
+  file, syntax colours and line numbers. Press another: the panel shows that one.
+- Press `file.ts:55`: the line is marked and scrolled to. Press a Markdown file
+  with a line: the block holding it is tinted.
+- In a rendered Markdown file, press a link to another file (Back returns), and a
+  link to a heading (it scrolls and tints).
+- Press the file name on a read card and an edit card: the panel opens at the
+  line the read began at and the line the edit changed. The path above the code
+  is relative to the working directory, and a file outside it keeps its full path.
+- Press `~/.gitconfig` and a folder path (`src/`): the first opens in the panel
+  if it is a file, the second opens the file manager.
+- Open a picture (a panel with a Full screen button) and one over 3 MB (a message).
+- Open a file outside the project: the panel says why, until **Preview files
+  outside the project** is on. A network path never opens.
+- Switch **File paths in replies** to the file manager: nothing opens in the panel.
 
 ## Interoperability
 

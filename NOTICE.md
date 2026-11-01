@@ -33,6 +33,10 @@ The original MIT license and attribution remain in [LICENSE](LICENSE).
 Refined Chat also adapts individual fixes from open Beautiful Chat pull requests,
 credited to their authors and ported by hand:
 
+- Folding finished tool cards, with the reader choosing which kinds: [PR #18](https://github.com/ABorakati/beautiful-chat/pull/18) by **philipphofmann**, adapted (kinds that start collapsed and kinds that fold when finished are two separate settings here, and a length limit applies).
+- Folding long code blocks in replies: [PR #20](https://github.com/ABorakati/beautiful-chat/pull/20) by **philipphofmann**, adapted (it shares the "Long code and diffs" limit with tool cards).
+- A summary of a tool card in its header: [PR #21](https://github.com/ABorakati/beautiful-chat/pull/21) by **philipphofmann**, adapted (the header says what a command did, and the size of an edit, write or read sits on the right).
+- Folding long prompts: [PR #22](https://github.com/ABorakati/beautiful-chat/pull/22) by **philipphofmann**, adapted (a switch with a line count, and a "Show full prompt" control).
 - Failed tool-call error text: [PR #19](https://github.com/ABorakati/beautiful-chat/pull/19) by **philipphofmann**.
 - Full shell commands in tool cards: [PR #25](https://github.com/ABorakati/beautiful-chat/pull/25) by **Chengxin-Xu**.
 - Images in assistant replies and spaces in image paths: [PR #26](https://github.com/ABorakati/beautiful-chat/pull/26) by **po-trottier**, adapted (remote images are not loaded automatically here).
