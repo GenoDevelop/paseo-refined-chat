@@ -1,8 +1,9 @@
 # Refined Chat
 
-A [Paseo](https://paseo.sh) plugin that redraws the Oh My Pi (OMP) chat stream: tool calls, reasoning,
-prompts, approvals and checklists become typed, syntax-aware cards that follow the active Paseo
-theme, and you decide how big the text is, what folds, and how it is coloured.
+A [Paseo](https://paseo.sh) plugin that redraws the chat of your coding agents (Claude Code, Codex,
+Oh My Pi and others that Paseo drives): tool calls, reasoning, prompts, approvals and checklists become
+typed, syntax-aware cards that follow the active Paseo theme, and you decide how big the text is, what
+folds, and how it is coloured. Coverage of specialised events can differ by provider.
 
 ![A turn in Refined Chat: a prompt, a command card, a folded read, and a reply with a coloured accent, bold text and a highlight mark](images/hero.png)
 
@@ -15,6 +16,7 @@ theme, and you decide how big the text is, what folds, and how it is coloured.
   with a one-line summary of what each did.
 - **Images** in replies and image reads, with a viewer.
 - **Links** that show where they go and warn when the text disagrees with the target.
+- A read-only **file preview** in the side panel for a path in a reply or on a tool card, with the line marked.
 - Its own **find bar** (Ctrl/Cmd+F) that searches the whole chat, tool cards included.
 
 Refined Chat is an independent fork of [Beautiful Chat](https://github.com/ABorakati/beautiful-chat)
@@ -152,8 +154,8 @@ for, then folds them again when it closes. Text selection covers only the lines 
 | Card | What you get |
 | --- | --- |
 | **Shell and Git** | A terminal frame with Bash highlighting, exit code and duration. The header says what the command did: what git changed (`+53 −0`), how many lines it printed (`8 lines`), or `no output`. A failed call keeps its exit code. |
-| **Read** | The file's language logo, a path that is a link, line numbers (real ones when the read starts mid-file), a copy button, and how many lines came back. |
-| **Write and Edit** | Diffs with old and new line numbers, adjacent removed and added rows joined into one block, and the changed words highlighted. The header carries `+X −Y`. A failed call shows no count, and a failed edit labels its diff "Not applied". |
+| **Read** | The file's language logo, a path that is a link (shown relative to the working directory when the file lies inside it), line numbers (real ones when the read starts mid-file), a copy button, and how many lines came back. |
+| **Write and Edit** | Diffs with old and new line numbers, adjacent removed and added rows joined into one block, and the changed words highlighted. The header carries `+X −Y`. A failed call shows no count, and a failed edit labels its diff "Not applied". The path is a link, like on a read card. |
 | **Images** | The picture itself instead of an empty code block. See [Images](#images). |
 | **Reasoning** | Live thinking text, a token badge, numbered steps, a connected rail with per-step time. |
 | **MCP** | Server badge, transport, input parameters and the response, each highlighted. |
@@ -198,7 +200,10 @@ paths and links on tool cards get the same underline. On a touch screen the unde
 
 ## Opening files
 
-A file name in a read, write, edit or code block is a link. Pressing it calls the plugin's own
+A file name in a read, write, edit or code block is a link, and so is a file path in a reply. What
+pressing it does follows the setting **File paths in replies**: it opens the read-only **File preview**
+panel (the default, described below), or shows the file in your file manager. A read card marks the line
+it began at, and an edit card the line it changed. The file manager is reached through the plugin's own
 daemon-side RPC (`file.reveal`), which resolves the path against the agent's working directory and asks
 the platform shell to show it:
 
@@ -209,7 +214,7 @@ the platform shell to show it:
 | Other | `xdg-open <directory>` opens the containing directory. |
 
 A file path in inline code in a reply works the same way: `src/app.ts`, `C:\work\app.ts:55` or `./notes.md`
-becomes a link (a `:55` line selector is accepted and ignored). A bare file name needs a common source or
+becomes a link (a `:55` line selector marks that line in the panel, and the file manager ignores it). A bare file name needs a common source or
 text extension, so `v1.beta` stays text. The path comes from the agent, so network paths (`\\host\share`,
 `//host/share`) are never linked and the daemon refuses them. The link only shows the file; it never opens
 or runs it. A link carries a file icon and, on hover, a bubble saying what pressing does.
@@ -234,8 +239,9 @@ trailing separator (`~/.gitconfig`, `C:\work\Makefile`) shows the folder icon, b
 folder by its text; pressing it asks the daemon whether it is a file (`file.kind`, a `stat` and nothing
 more), and a file then opens in the side panel like any other.
 
-A directory path opens that directory. A path the daemon cannot stat does nothing. The link cannot open
-Paseo's own file editor, which plugins cannot target: see the first
+A directory path opens that directory in the file manager. A path the daemon cannot stat does nothing in
+the file manager, and the panel says the file was not found. The link cannot open Paseo's own file
+editor, which plugins cannot target: see the first
 [limitation](#plugin-sdk-limitations-found-while-building-this). The side panel is the plugin's own viewer.
 
 ## What the plugin reads
@@ -276,8 +282,8 @@ a match inside one of them.
 ## Plugin SDK limitations found while building this
 
 Measured against `@getpaseo/plugin` 0.8.0 and the Paseo 0.8.0 desktop build; the plugin now builds
-against 0.14.0, but the entries have not all been re-measured. Each entry names the evidence and the
-workaround this plugin uses.
+against 0.14.0. Re-checked against 0.14.0: entry 1 changed (see it), and entries 5 and 13 still hold.
+The others have not been re-measured. Each entry names the evidence and the workaround this plugin uses.
 
 1. **No file navigation.** Timeline renderer props are exactly `{agentId, theme, host, layout,
 timestamp, item}`, and plugin navigation offers only `openSettings`, `openSurface`,
@@ -336,18 +342,19 @@ timestamp, item}`, and plugin navigation offers only `openSettings`, `openSurfac
 
 ---
 
----
-
 ## Project structure
 
 ```text
 refined-chat/
   paseo-plugin.json          # Manifest: id and Paseo requirement
   index.client.tsx           # Timeline transformers, renderers, settings screen
-  index.server.ts            # Daemon-side RPCs (file.reveal, file.image, highlighting)
+  index.server.ts            # Daemon-side RPCs (file.reveal, file.kind, file.read, file.locate,
+                             #   file.image, highlighting)
   shared/                    # Contracts shared by client and server, one file per RPC
   client/
     live-renderers.tsx       # Timeline item to component mapping
+    file-preview.tsx         # The File preview side panel and its store
+    file-link.ts             # Parsing and resolving links to files, headings and lines
     settings-page.tsx        # Settings screen
     preferences.ts           # Client-side preferences, palette and migrations
     tool-collapse.ts         # Which cards fold, and when

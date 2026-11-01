@@ -56,16 +56,18 @@ Disable/remove the test plugin after verification.
 
 ## 3. Verify the catalog image
 
-Visual plugins require at least one **current, truthful screenshot**. The
-existing `images/hero.png` originates from the Beautiful Chat baseline. It
-depicts the inherited default chat appearance but does not show Refined
-Chat's new typography controls.
+Visual plugins require at least one **current, truthful screenshot**.
+`images/hero.png` shows a turn in Refined Chat (a prompt, a command card, a
+folded read, and a reply with the accent, bold and highlight colours), and the
+README adds three more under `docs/images`. None shows the File preview side
+panel, which arrived in 0.5.0.
 
-Before registry submission, capture a current Refined Chat interface with
-sample content (no real chat, repository paths, credentials, or personal
-details). Update `images/hero.png` or add a new PNG to `media`, committing
-that change **before** tagging the release. The screenshot and commit must
-correspond to the version being reviewed.
+Before a release that changes how the plugin looks, check that the screenshots
+still match it. Capture any new one with sample content (no real chat,
+repository paths, credentials, or personal details). Update `images/hero.png`
+or add a new PNG to `media`, committing that change **before** tagging the
+release. The screenshot and commit must correspond to the version being
+reviewed.
 
 ## 4. Tag and publish GitHub Release
 
