@@ -282,7 +282,8 @@ a match inside one of them.
 ## Plugin SDK limitations found while building this
 
 Measured against `@getpaseo/plugin` 0.8.0 and the Paseo 0.8.0 desktop build; the plugin now builds
-against 0.14.0. Re-checked against 0.14.0: entry 1 changed (see it), and entries 5 and 13 still hold.
+against 0.14.0. Re-checked against 0.14.0: entry 1 now has a second workaround (see it), and entries 5
+and 13 still hold.
 The others have not been re-measured. Each entry names the evidence and the workaround this plugin uses.
 
 1. **No file navigation.** Timeline renderer props are exactly `{agentId, theme, host, layout,
@@ -290,9 +291,10 @@ timestamp, item}`, and plugin navigation offers only `openSettings`, `openSurfac
    `openWorkspacePanel`, `openAgentPanel`, `openAgent`, and `openWorkspace`. The host's own file tab
    target (`{kind:"file", path}`, reachable in-app through `?open=file:<path>`) is not exposed, and
    the `paseo://` scheme only carries agent deep links. Workaround: a daemon-side RPC that reveals
-   the path in the operating system's file manager, and, since 0.14.0 (`addWorkspacePanel` and
-   `openPanel`), the plugin's own read-only File preview panel in the side view. `openPanel` takes no
-   parameters, so the path reaches the panel through a store on the client.
+   the path in the operating system's file manager, and, through `addWorkspacePanel` and `openPanel`
+   (both in the SDK since at least 0.9.1), the plugin's own read-only File preview panel in the side
+   view. `openPanel` carries only the workspace, so the path reaches the panel through a store on the
+   client.
 2. **Transformers see a stripped item.** The app maps its stream item to the plugin item before any
    transformer runs, and a user message keeps only `text`, `messageId`, and `clientMessageId`. Pasted
    images never reach plugin code, and the daemon timeline row stores the same item, so a server RPC
