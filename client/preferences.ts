@@ -58,6 +58,8 @@ export type CodeFontPreference = "code" | "plain";
 export type MonoFontPreference = "iosevka" | "paseo" | "custom";
 /** Where pressing a file path in a reply shows the file: a side panel, or the file manager. */
 export type PathOpensPreference = "panel" | "manager";
+/** When a bar over a run of cards closes the run by itself. */
+export type CardRunCollapsePreference = "never" | "finished" | "always";
 export type MarkdownVariantPreference = "document" | "compact" | "terminal";
 
 /** Arbitrary percentage input, with safety bounds to avoid unreadable layouts. */
@@ -162,6 +164,14 @@ export interface EnhancerPreferences {
    */
   selectionActions: boolean;
   pathOpens: PathOpensPreference;
+  /** A bar over two or more consecutive cards that hides all but the first, or shows them again. */
+  cardRunBar: boolean;
+  /**
+   * Whether a run closes on its own: never, once every card of it has finished
+   * without a failure, or as soon as it has enough cards. A run the reader opened
+   * or closed with the bar keeps that state.
+   */
+  cardRunCollapse: CardRunCollapsePreference;
   /** Draw `==text==` in a reply as a highlighter mark. */
   highlightMarks: boolean;
   markColor: MarkColorChoice;
@@ -212,6 +222,8 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   startCollapsedKinds: [],
   selectionActions: true,
   pathOpens: "panel",
+  cardRunBar: false,
+  cardRunCollapse: "never",
   highlightMarks: false,
   markColor: "yellow",
   markCustomColor: "#eab308",
@@ -345,6 +357,14 @@ function loadPreferences(): EnhancerPreferences {
           ? candidate.selectionActions
           : DEFAULT_PREFERENCES.selectionActions,
       pathOpens: candidate.pathOpens === "manager" ? "manager" : DEFAULT_PREFERENCES.pathOpens,
+      cardRunBar:
+        typeof candidate.cardRunBar === "boolean"
+          ? candidate.cardRunBar
+          : DEFAULT_PREFERENCES.cardRunBar,
+      cardRunCollapse:
+        candidate.cardRunCollapse === "finished" || candidate.cardRunCollapse === "always"
+          ? candidate.cardRunCollapse
+          : DEFAULT_PREFERENCES.cardRunCollapse,
       highlightMarks:
         typeof candidate.highlightMarks === "boolean"
           ? candidate.highlightMarks

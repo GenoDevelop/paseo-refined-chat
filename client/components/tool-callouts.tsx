@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { saveCardState, savedCardState } from "../card-state";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import type { TextStyle, ViewStyle } from "react-native";
 import { Glyph } from "./glyph";
@@ -66,6 +67,8 @@ interface ToolCalloutProps {
    * or closed themselves keeps its state, and a failed call always stays open.
    */
   autoCollapse?: AutoCollapseRules;
+  /** Keeps the open state across being hidden and shown again; see `card-state`. */
+  stateKey?: string;
   /**
    * Opens a path: in the side panel when it is a file there, otherwise in the
    * machine's own file manager. `kind` is passed when the text already says
@@ -96,6 +99,7 @@ export function ToolCallout({
   tokens,
   defaultExpanded = true,
   autoCollapse,
+  stateKey,
   onRevealPath,
   imageFile,
   editLine,
@@ -103,8 +107,10 @@ export function ToolCallout({
   shellMaxLines = 0,
   codeMaxLines = 0,
 }: ToolCalloutProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  const [touched, setTouched] = useState(false);
+  const restored = savedCardState(stateKey);
+  const [expanded, setExpanded] = useState(restored?.expanded ?? defaultExpanded);
+  const [touched, setTouched] = useState(restored?.touched ?? false);
+  useEffect(() => saveCardState(stateKey, { expanded, touched }), [stateKey, expanded, touched]);
 
   // Every branch below needs a payload. A tool that carries none — a hub op
   // with no parsed record, an unmapped kind — would otherwise draw an empty

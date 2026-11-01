@@ -45,6 +45,21 @@ No GitHub Actions minutes are consumed.
 - A failed edit or write shows no `+X -Y` count, and a failed edit labels its
   diff "Not applied".
 - Verify the **Collapse** action at the bottom of an expanded long card.
+- Turn on **Bar over runs of cards**. Two or more tool and reasoning cards in a
+  row get a bar over the first one: what they did, and "N steps · Collapse". Press
+  it: the other cards disappear with no gap and only the bar stays, and it reads
+  "Expand". Press that: they come back in their places, each open or folded as it
+  was. A card that arrives while the run is closed shows under the bar. A reply or
+  a prompt between cards starts a new run, and a single card has no bar. Check an
+  old conversation, scroll up through a long history, and fold and unfold a run
+  several times: the counts and the description must match the cards and not
+  change.
+- With the bar on, set **Collapse runs of cards** to When finished: a run closes
+  once its last card ends, unless a card failed (the bar says how many). Add that
+  card's kind to Cards that start collapsed: the run now closes. Set it to Always
+  and watch a run close as it grows, the bar saying Working. A run you opened or
+  closed with the bar is not closed again by itself. With the bar off, the setting
+  is not shown.
 - Switch the rules off again and verify the original display returns.
 
 ## File preview
