@@ -219,6 +219,15 @@ text extension, so `v1.beta` stays text. The path comes from the agent, so netwo
 `//host/share`) are never linked and the daemon refuses them. The link only shows the file; it never opens
 or runs it. A link carries a file icon and, on hover, a bubble saying what pressing does.
 
+A path in command output is a link too: in the output and the error output of a shell tool (Bash,
+PowerShell and the like), `git`, an eval cell, or a tool whose result is plain text. The compiler errors,
+stack traces and test failures that name a file open it at that line: `src/a.ts(12,5)`, `app.js:10:5`,
+`File "t.py", line 12` and `src\Program.cs(40,13)` are read as `:line[:column]`. The same tests apply as for
+a reply, so a URL, a version number or a network path is never a link, and a path with a space in it is not
+found, because the output does not say where it ends. A relative path is resolved against the agent's
+working directory, so one printed by a command that ran in another folder may not exist; pressing it then
+does nothing.
+
 By default pressing a file path opens a read-only **File preview** panel in Paseo's side view, with
 syntax colours and line numbers (a Markdown file opens rendered, with its local images beside it, and a button for its source); a second
 press replaces the file in the open panel. The panel reads the

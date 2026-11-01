@@ -13,8 +13,9 @@ import { countDiffLines, offsetHunkHeaders } from "./diff-text";
 import type { ExtendedThemeTokens } from "./theme-tokens";
 import { HubCallout } from "./hub-callout";
 import { PaseoToolCallout } from "./paseo-tool-callouts";
-import { SyntaxHighlightBlock } from "./syntax-highlight";
+import { SyntaxHighlightBlock, renderPlainOutput } from "./syntax-highlight";
 import { FoldedOutput } from "./folded-output";
+import type { PathKind } from "./markdown/file-path";
 import { FileTypeLogo } from "./file-type-logo";
 import { ImagePreview } from "./image-preview";
 import { GitHubBody } from "./github-body";
@@ -65,8 +66,12 @@ interface ToolCalloutProps {
    * or closed themselves keeps its state, and a failed call always stays open.
    */
   autoCollapse?: AutoCollapseRules;
-  /** Shows a path in the machine's own file manager. */
-  onRevealPath?: (path: string) => void;
+  /**
+   * Opens a path: in the side panel when it is a file there, otherwise in the
+   * machine's own file manager. `kind` is passed when the text already says
+   * which, so the opener does not have to ask the disk.
+   */
+  onRevealPath?: (path: string, kind?: PathKind) => void;
   /**
    * The image this call read, when it read one. `undefined` keeps the code
    * block, so a harness with no daemon still renders the card; `null` means
@@ -722,6 +727,7 @@ export function ToolCallout({
                   limit={shellLimit}
                   tokens={tokens}
                   textStyle={styles.terminalOutput}
+                  onPath={onRevealPath}
                 />
               )}
               {data.shell?.stderr && (
@@ -730,7 +736,7 @@ export function ToolCallout({
                   limit={shellLimit}
                   tokens={tokens}
                   textStyle={[styles.terminalOutput, { color: tokens.danger }]}
-                  render={(run) => run}
+                  render={(run) => renderPlainOutput(run, tokens.danger, onRevealPath)}
                 />
               )}
               {data.output && !data.shell?.stdout && (
@@ -739,6 +745,7 @@ export function ToolCallout({
                   limit={shellLimit}
                   tokens={tokens}
                   textStyle={styles.terminalOutput}
+                  onPath={onRevealPath}
                 />
               )}
               {!data.shell?.stdout && !data.shell?.stderr && !data.output && (
@@ -991,6 +998,7 @@ export function ToolCallout({
                         limit={shellLimit}
                         tokens={tokens}
                         textStyle={styles.evalOutputText}
+                        onPath={onRevealPath}
                       />
                     </View>
                   ) : null}
@@ -1073,6 +1081,7 @@ export function ToolCallout({
                   limit={shellLimit}
                   tokens={tokens}
                   textStyle={styles.terminalOutput}
+                  onPath={onRevealPath}
                 />
               ) : (
                 <Text selectable style={styles.silentCommandText}>
