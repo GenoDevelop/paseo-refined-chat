@@ -45,6 +45,14 @@ No GitHub Actions minutes are consumed.
 - A failed edit or write shows no `+X -Y` count, and a failed edit labels its
   diff "Not applied".
 - Verify the **Collapse** action at the bottom of an expanded long card.
+- Turn on **Bar over runs of cards**. Three or more tool and reasoning cards in a
+  row get a bar over the first one: the count and "Collapse all". Press it: the
+  cards of the run disappear with no gap and only the bar stays, and the control
+  reads "Expand all". Press that: they come back in their places. A new card that
+  arrives while the run is closed shows under the bar. A
+  reply or a prompt between cards
+  starts a new run, and a run of two has no bar. Check an old conversation too,
+  and scroll a long run: the count must not jump.
 - Switch the rules off again and verify the original display returns.
 
 ## File preview

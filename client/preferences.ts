@@ -162,6 +162,8 @@ export interface EnhancerPreferences {
    */
   selectionActions: boolean;
   pathOpens: PathOpensPreference;
+  /** A bar over three or more consecutive cards that closes or opens all of them. */
+  cardRunBar: boolean;
   /** Draw `==text==` in a reply as a highlighter mark. */
   highlightMarks: boolean;
   markColor: MarkColorChoice;
@@ -212,6 +214,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   startCollapsedKinds: [],
   selectionActions: true,
   pathOpens: "panel",
+  cardRunBar: false,
   highlightMarks: false,
   markColor: "yellow",
   markCustomColor: "#eab308",
@@ -345,6 +348,10 @@ function loadPreferences(): EnhancerPreferences {
           ? candidate.selectionActions
           : DEFAULT_PREFERENCES.selectionActions,
       pathOpens: candidate.pathOpens === "manager" ? "manager" : DEFAULT_PREFERENCES.pathOpens,
+      cardRunBar:
+        typeof candidate.cardRunBar === "boolean"
+          ? candidate.cardRunBar
+          : DEFAULT_PREFERENCES.cardRunBar,
       highlightMarks:
         typeof candidate.highlightMarks === "boolean"
           ? candidate.highlightMarks

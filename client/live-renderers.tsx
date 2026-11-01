@@ -30,6 +30,8 @@ import { AssistantFooter } from "./components/turn-footer";
 import { SystemCard } from "./components/system-card";
 import { parseSystemEnvelope } from "./system-envelope";
 import { useIsTimelineTail } from "./timeline-tail";
+import { reasoningCardId, toolCardId, useRunMember, useRunView } from "./card-runs";
+import { RunBar } from "./components/run-bar";
 import type {
   ToolCalloutData,
   ToolCallKind,
@@ -462,6 +464,16 @@ export function LiveToolCallRenderer({
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
   const data = item.data;
+  const runKey = `tool:${data.callId ?? data.name}:${timestamp.getTime()}`;
+  useRunMember(
+    agentId,
+    runKey,
+    toolCardId(data.callId),
+    timestamp.getTime(),
+    true,
+    preferences.cardRunBar,
+  );
+  const runClosed = useRunView(agentId, runKey)?.closed === true && preferences.cardRunBar;
 
   const calloutData = useMemo((): ToolCalloutData => {
     const rawName = (data.name || "").toLowerCase();
@@ -716,8 +728,17 @@ export function LiveToolCallRenderer({
     cwd,
   );
 
+  if (runClosed) {
+    return (
+      <View {...hostFontEscape}>
+        <RunBar agentId={agentId} cardKey={runKey} enabled tokens={tokens} />
+      </View>
+    );
+  }
+
   return (
     <View {...hostFontEscape}>
+      <RunBar agentId={agentId} cardKey={runKey} enabled={preferences.cardRunBar} tokens={tokens} />
       <ToolCallout
         data={calloutData}
         tokens={tokens}
@@ -746,10 +767,22 @@ export function LiveToolCallRenderer({
 }
 
 export function LiveReasoningRenderer({
+  agentId,
   item,
   theme,
+  timestamp,
 }: PluginTimelineItemProps<LiveReasoningPayload>) {
   const preferences = useEnhancerPreferences();
+  const runKey = `reasoning:${timestamp.getTime()}`;
+  useRunMember(
+    agentId,
+    runKey,
+    reasoningCardId(item.data.text),
+    timestamp.getTime(),
+    true,
+    preferences.cardRunBar,
+  );
+  const runClosed = useRunView(agentId, runKey)?.closed === true && preferences.cardRunBar;
   const tokens = useMemo(
     () => buildThemeTokens(theme.colors, preferences),
     [theme.colors, preferences],
@@ -828,8 +861,17 @@ export function LiveReasoningRenderer({
     };
   }, [data, revealed]);
 
+  if (runClosed) {
+    return (
+      <View {...hostFontEscape}>
+        <RunBar agentId={agentId} cardKey={runKey} enabled tokens={tokens} />
+      </View>
+    );
+  }
+
   return (
     <View {...hostFontEscape}>
+      <RunBar agentId={agentId} cardKey={runKey} enabled={preferences.cardRunBar} tokens={tokens} />
       <ReasoningTrace
         data={reasoningData}
         tokens={tokens}
@@ -842,8 +884,21 @@ export function LiveReasoningRenderer({
   );
 }
 
-export function LiveTodoRenderer({ item, theme }: PluginTimelineItemProps<LiveTodoPayload>) {
+export function LiveTodoRenderer({
+  agentId,
+  item,
+  theme,
+  timestamp,
+}: PluginTimelineItemProps<LiveTodoPayload>) {
   const preferences = useEnhancerPreferences();
+  useRunMember(
+    agentId,
+    `todo:${timestamp.getTime()}`,
+    undefined,
+    timestamp.getTime(),
+    false,
+    preferences.cardRunBar,
+  );
   const tokens = useMemo(
     () => buildThemeTokens(theme.colors, preferences),
     [theme.colors, preferences],
@@ -911,6 +966,7 @@ export function LiveAssistantRenderer({
   // host puts it: under the newest message, once, not under every reply.
   const itemKey = `assistant:${timestamp.getTime()}`;
   const isTail = useIsTimelineTail(itemKey);
+  useRunMember(agentId, itemKey, undefined, timestamp.getTime(), false, preferences.cardRunBar);
 
   // Job results, IRC relays and reminders arrive as replies because the host
   // files any unclaimed `custom` message under this item kind. They are not
@@ -956,8 +1012,21 @@ export function LiveAssistantRenderer({
  * which reads as a different product beside the plugin's callouts. Both carry
  * only a level and a message, so the card is a badge plus that message.
  */
-export function LiveNoticeRenderer({ item, theme }: PluginTimelineItemProps<LiveNoticePayload>) {
+export function LiveNoticeRenderer({
+  agentId,
+  item,
+  theme,
+  timestamp,
+}: PluginTimelineItemProps<LiveNoticePayload>) {
   const preferences = useEnhancerPreferences();
+  useRunMember(
+    agentId,
+    `notice:${timestamp.getTime()}`,
+    undefined,
+    timestamp.getTime(),
+    false,
+    preferences.cardRunBar,
+  );
   const tokens = useMemo(
     () => buildThemeTokens(theme.colors, preferences),
     [theme.colors, preferences],
@@ -1014,6 +1083,14 @@ export function LiveUserMessageRenderer({
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
+  useRunMember(
+    agentId,
+    `user:${timestamp.getTime()}`,
+    undefined,
+    timestamp.getTime(),
+    false,
+    preferences.cardRunBar,
+  );
   const paseo = usePaseo();
   const handle = useMemo(() => paseo.agents.ref(agentId), [paseo, agentId]);
 

@@ -1215,6 +1215,14 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         defaultOpen={true}
         tokens={tokens}
       >
+        <ToggleRow
+          title="Bar over runs of cards"
+          description="Three or more tool and reasoning cards in a row get a bar above the first one, with their count and a control that hides all of them or shows them again. Off by default."
+          value={preferences.cardRunBar}
+          onChange={(cardRunBar) => updateEnhancerPreferences({ cardRunBar })}
+          tokens={tokens}
+        />
+
         <MultiChoiceRow<CollapseKind>
           title="Cards that start collapsed"
           description="Drawn folded from the start, even while still running, and open to read. Independent of folding on finish. A failed call stays folded too; its exit code and status show in the header."

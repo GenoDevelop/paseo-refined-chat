@@ -115,6 +115,7 @@ Nothing folds on its own until you pick something here.
 
 | Setting | Effect |
 | --- | --- |
+| Bar over runs of cards | Off by default. Three or more tool and reasoning cards in a row get a bar above the first one with their count and a control that hides all of them, leaving only the bar, or shows them again. The cards are removed from the timeline rather than drawn empty, so a closed run leaves no gaps. A reply, a prompt, a to-do list or a notice ends a run. A tool call with no call id cannot be hidden and stays visible. A closed run opens again after the plugin is reloaded. |
 | Cards that start collapsed | Kinds drawn folded from the start, even while running and when the call fails. |
 | Cards to collapse when finished | Kinds that fold back up once they finish. A thinking stream stays open while it streams. A kind that already starts collapsed is dimmed here. |
 | Only fold longer cards | Keeps a card open while its output, code and diff add up to fewer lines than the limit. Dimmed when no kind is left to fold. |
