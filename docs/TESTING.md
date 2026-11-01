@@ -66,6 +66,11 @@ Use a project that holds a Markdown file with a heading, a link to another file 
 - Open a file outside the project: the panel says why, until **Preview files
   outside the project** is on. A network path never opens.
 - Switch **File paths in replies** to the file manager: nothing opens in the panel.
+- Run commands whose output names files, in Bash and in PowerShell: `git status`,
+  a failing `tsc` or test run, a Node or Python stack trace. A path with a line
+  (`src/a.ts(12,5)`, `app.js:10:5`, `File "t.py", line 12`) opens the panel at
+  that line, in the output and in the error output alike. A URL, a version number
+  and a `\\host\share` path stay plain text.
 
 ## Interoperability
 

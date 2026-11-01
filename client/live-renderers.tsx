@@ -695,7 +695,10 @@ export function LiveToolCallRenderer({
   // The daemon side owns the shell, so revealing a file is one RPC. A path the
   // daemon cannot stat answers with an error the press simply ignores.
   const openPath = usePathOpener(cwd, workspaceId, preferences.pathOpens);
-  const handleRevealPath = useCallback((path: string) => openPath(path), [openPath]);
+  const handleRevealPath = useCallback(
+    (path: string, kind?: PathKind) => openPath(path, kind),
+    [openPath],
+  );
 
   // Only a read or write of an image asks the daemon for bytes; the hook
   // itself refuses every other path, so a code read costs no RPC.

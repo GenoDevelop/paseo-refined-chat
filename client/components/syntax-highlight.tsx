@@ -12,6 +12,8 @@ import { FileTypeLogo, detectFileType } from "./file-type-logo";
 import { selectableSurface, unselectable } from "./selection";
 import { selectionCodeSurface, selectionSurface } from "./selection-actions";
 import { useHighlightedLines } from "../highlight";
+import { findOutputPaths } from "../output-paths";
+import type { PathKind } from "./markdown/file-path";
 import { diffLineNumbers, intralineRanges } from "./diff-text";
 import { planFold, useFold } from "../fold";
 import { FoldBar } from "./fold-bar";
@@ -1299,13 +1301,78 @@ const LINE_VERDICTS: Array<{
 const OUTPUT_TOKENS =
   /(https?:\/\/[^\s]+|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\b[\w.-]+\.[a-z]{1,5}(?::\d+)?\b|\b\d+(?:\.\d+)?(?:ms|s|m|h|%|KB|MB|GB)?\b|\b(?:PASS|OK|DONE|SUCCESS)\b|\b(?:FAIL(?:ED)?|ERROR|FATAL)\b|\b(?:WARN(?:ING)?|SKIPPED)\b)/g;
 
+/** Opens a path found in command output, the way a path in a reply opens. */
+export type OpenOutputPath = (path: string, kind: PathKind) => void;
+
+/**
+ * One line with its paths drawn as links. Everything between them goes through
+ * `plain`, so a verdict line keeps its single tone and an ordinary line its
+ * token colours; a path takes the colour of the text it sits in. Without
+ * `onPath` the line is drawn as if it held no path.
+ */
+function linkPaths(
+  line: string,
+  key: string,
+  color: string,
+  plain: (segment: string, segmentKey: string) => React.ReactNode,
+  onPath: OpenOutputPath | undefined,
+): React.ReactNode {
+  const spans = onPath ? findOutputPaths(line) : [];
+  if (!onPath || spans.length === 0) return plain(line, key);
+  const nodes: React.ReactNode[] = [];
+  let at = 0;
+  for (const span of spans) {
+    if (span.start > at) nodes.push(plain(line.slice(at, span.start), `${key}-${at}`));
+    nodes.push(
+      <Text
+        key={`${key}-p${span.start}`}
+        selectable
+        accessibilityRole="link"
+        onPress={() => onPath(span.path, span.kind)}
+        style={{ color, textDecorationLine: LINK_UNDERLINE }}
+        {...plainLinkProps()}
+      >
+        {line.slice(span.start, span.end)}
+      </Text>,
+    );
+    at = span.end;
+  }
+  if (at < line.length) nodes.push(plain(line.slice(at), `${key}-${at}`));
+  return nodes;
+}
+
+/** Output in one colour, such as stderr, with its paths pressable. */
+export function renderPlainOutput(
+  text: string,
+  color: string,
+  onPath?: OpenOutputPath,
+): React.ReactNode {
+  return text.split("\n").map((line, index, lines) => (
+    <React.Fragment key={`plain-${index}`}>
+      {linkPaths(line, `plain-${index}`, color, (segment) => segment, onPath)}
+      {index < lines.length - 1 ? "\n" : ""}
+    </React.Fragment>
+  ));
+}
+
 /**
  * Command output, coloured. Verdict lines take one tone end to end; everything
  * else keeps muted body text with counts, durations, paths, and quoted values
  * lifted out so the numbers are findable.
  */
-export function renderTerminalOutput(text: string, tokens: ExtendedThemeTokens): React.ReactNode {
+export function renderTerminalOutput(
+  text: string,
+  tokens: ExtendedThemeTokens,
+  onPath?: OpenOutputPath,
+): React.ReactNode {
   const lines = text.replace(/\s+$/, "").split("\n");
+
+  const withPaths = (
+    line: string,
+    key: string,
+    color: string,
+    plain: (segment: string, segmentKey: string) => React.ReactNode,
+  ) => linkPaths(line, key, color, plain, onPath);
 
   return lines.map((line, lineIdx) => {
     const key = `out-${lineIdx}`;
@@ -1320,7 +1387,7 @@ export function renderTerminalOutput(text: string, tokens: ExtendedThemeTokens):
             : tokens.warning;
       return (
         <Text key={key} selectable style={{ color: tone }}>
-          {line}
+          {withPaths(line, key, tone, (segment) => segment)}
           {lineIdx < lines.length - 1 ? "\n" : ""}
         </Text>
       );
@@ -1343,52 +1410,62 @@ export function renderTerminalOutput(text: string, tokens: ExtendedThemeTokens):
       );
     }
 
-    const parts: React.ReactNode[] = [];
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
-    OUTPUT_TOKENS.lastIndex = 0;
-
-    while ((match = OUTPUT_TOKENS.exec(line)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(line.slice(lastIndex, match.index));
-      }
-      const token = match[0];
-      const spanKey = `${key}-${match.index}`;
-      let color = tokens.foreground;
-
-      if (/^https?:\/\//.test(token)) {
-        color = tokens.accent;
-      } else if (token.startsWith('"') || token.startsWith("'")) {
-        color = tokens.syntax.string;
-      } else if (/^(?:PASS|OK|DONE|SUCCESS)$/i.test(token)) {
-        color = tokens.success;
-      } else if (/^(?:FAIL(?:ED)?|ERROR|FATAL)$/i.test(token)) {
-        color = tokens.danger;
-      } else if (/^(?:WARN(?:ING)?|SKIPPED)$/i.test(token)) {
-        color = tokens.warning;
-      } else if (/^\d/.test(token)) {
-        color = tokens.syntax.number;
-      } else {
-        color = tokens.syntax.property;
-      }
-
-      parts.push(
-        <Text key={spanKey} selectable style={{ color }}>
-          {token}
-        </Text>,
-      );
-      lastIndex = match.index + token.length;
-    }
-
-    if (lastIndex < line.length) {
-      parts.push(line.slice(lastIndex));
-    }
-
     return (
       <Text key={key} selectable style={{ color: tokens.foregroundMuted }}>
-        {parts}
+        {withPaths(line, key, tokens.syntax.property, (segment, segmentKey) =>
+          colourOutputTokens(segment, segmentKey, tokens),
+        )}
         {lineIdx < lines.length - 1 ? "\n" : ""}
       </Text>
     );
   });
+}
+
+/** Lifts counts, durations, paths, quoted values and verdict words out of a plain output segment. */
+function colourOutputTokens(
+  segment: string,
+  key: string,
+  tokens: ExtendedThemeTokens,
+): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  OUTPUT_TOKENS.lastIndex = 0;
+
+  while ((match = OUTPUT_TOKENS.exec(segment)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(segment.slice(lastIndex, match.index));
+    }
+    const token = match[0];
+    const spanKey = `${key}-${match.index}`;
+    let color = tokens.foreground;
+
+    if (/^https?:\/\//.test(token)) {
+      color = tokens.accent;
+    } else if (token.startsWith('"') || token.startsWith("'")) {
+      color = tokens.syntax.string;
+    } else if (/^(?:PASS|OK|DONE|SUCCESS)$/i.test(token)) {
+      color = tokens.success;
+    } else if (/^(?:FAIL(?:ED)?|ERROR|FATAL)$/i.test(token)) {
+      color = tokens.danger;
+    } else if (/^(?:WARN(?:ING)?|SKIPPED)$/i.test(token)) {
+      color = tokens.warning;
+    } else if (/^\d/.test(token)) {
+      color = tokens.syntax.number;
+    } else {
+      color = tokens.syntax.property;
+    }
+
+    parts.push(
+      <Text key={spanKey} selectable style={{ color }}>
+        {token}
+      </Text>,
+    );
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < segment.length) {
+    parts.push(segment.slice(lastIndex));
+  }
+  return parts;
 }

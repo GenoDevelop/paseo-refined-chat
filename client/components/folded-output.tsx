@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 import type { TextStyle } from "react-native";
 import { planFold, useFold } from "../fold";
 import { FoldBar } from "./fold-bar";
-import { renderTerminalOutput } from "./syntax-highlight";
+import { renderTerminalOutput, type OpenOutputPath } from "./syntax-highlight";
 import { selectionCodeText } from "./selection-actions";
 import type { ExtendedThemeTokens } from "./theme-tokens";
 
@@ -15,6 +15,8 @@ interface FoldedOutputProps {
   textStyle: TextStyle | TextStyle[];
   /** How a run of lines is drawn; the default colours it like terminal output. */
   render?: (text: string) => React.ReactNode;
+  /** Makes the paths the output names pressable; absent, they stay plain text. */
+  onPath?: OpenOutputPath;
 }
 
 /**
@@ -22,8 +24,8 @@ interface FoldedOutputProps {
  * is rarely what the reader came for, and the end is where the error and the
  * summary are, so both ends stay and the middle sits behind one control.
  */
-export function FoldedOutput({ text, limit, tokens, textStyle, render }: FoldedOutputProps) {
-  const draw = render ?? ((run: string) => renderTerminalOutput(run, tokens));
+export function FoldedOutput({ text, limit, tokens, textStyle, render, onPath }: FoldedOutputProps) {
+  const draw = render ?? ((run: string) => renderTerminalOutput(run, tokens, onPath));
   const trimmed = text.replace(/\s+$/, "");
   const lines = useMemo(() => trimmed.split("\n"), [trimmed]);
   const plan = useMemo(() => planFold(lines.length, limit, "headTail"), [lines.length, limit]);

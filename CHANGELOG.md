@@ -5,6 +5,9 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 
 ## [Unreleased]
 
+### Added
+- A path in command output is a link, as it is in a reply: pressing `src/a.ts(12,5)` in a compiler error, `C:\work\app\index.js:10:5` in a stack trace, `tests/test_a.py` after `File "…", line 12`, `docs/TESTING.md` in `git status`, or a path in a test failure opens it in the side panel (or the file manager, following "File paths in replies") at that line. This covers the output and the error output of Bash, PowerShell and other shell tools, `git`, eval cells, and tools whose result is plain text. A line written as `(12,5)` or `, line 12` is read as `:12:5` or `:12`. A URL, a version number and a network path are never links, and a path with a space in it is not found, because the output does not say where it ends. The link only reveals; nothing is run. A relative path is resolved against the agent's working directory, so one printed by a command that ran in another folder may not exist and then does nothing.
+
 ### Fixed
 - A Codex reasoning summary draws as one step per heading (`1. Checking current query state`) instead of one block of `**…****…**` text. Codex sends its headings with no blank line between them and then sends them all again as the finished summary, so a heading that touches another, or sits on the next line, starts a new step, and a heading already shown is not drawn twice. A bold line on its own titles the paragraph after it. Plain reasoning text, such as Claude's, is split as before.
 
