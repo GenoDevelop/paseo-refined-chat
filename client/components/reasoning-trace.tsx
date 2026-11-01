@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { saveCardState, savedCardState } from "../card-state";
 import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
 import { Glyph } from "./glyph";
 import { frosted } from "./frosted";
@@ -20,6 +21,8 @@ interface ReasoningTraceProps {
   defaultExpanded?: boolean;
   /** Folds the trace once the thought ends, unless the reader opened or closed it. */
   autoCollapse?: boolean;
+  /** Keeps the open state across being hidden and shown again; see `card-state`. */
+  stateKey?: string;
 }
 
 export function ReasoningTrace({
@@ -27,9 +30,15 @@ export function ReasoningTrace({
   tokens,
   defaultExpanded = false,
   autoCollapse = false,
+  stateKey,
 }: ReasoningTraceProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  const [touched, setTouched] = useState(false);
+  const restored = savedCardState(stateKey);
+  const [isExpanded, setIsExpanded] = useState(restored?.expanded ?? defaultExpanded);
+  const [touched, setTouched] = useState(restored?.touched ?? false);
+  useEffect(
+    () => saveCardState(stateKey, { expanded: isExpanded, touched }),
+    [stateKey, isExpanded, touched],
+  );
   const toggle = useCallback(() => {
     setTouched(true);
     setIsExpanded((previous) => !previous);

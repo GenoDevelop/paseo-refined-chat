@@ -742,6 +742,7 @@ export function LiveToolCallRenderer({
       <ToolCallout
         data={calloutData}
         tokens={tokens}
+        stateKey={preferences.cardRunBar ? runKey : undefined}
         defaultExpanded={isExpanded}
         autoCollapse={
           preferences.autoCollapseKinds.length > 0
@@ -875,6 +876,7 @@ export function LiveReasoningRenderer({
       <ReasoningTrace
         data={reasoningData}
         tokens={tokens}
+        stateKey={preferences.cardRunBar ? runKey : undefined}
         defaultExpanded={
           !preferences.startCollapsedKinds.includes("thinking") && data.phase === "streaming"
         }
