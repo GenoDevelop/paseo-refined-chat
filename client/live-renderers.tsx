@@ -29,7 +29,7 @@ import { AssistantFooter } from "./components/turn-footer";
 import { SystemCard } from "./components/system-card";
 import { parseSystemEnvelope } from "./system-envelope";
 import { useIsTimelineTail } from "./timeline-tail";
-import { reasoningCardId, runRowProps, toolCardId, useRunMember, useRunView } from "./card-runs";
+import { itemKey as runItemKey, reasoningCardId, runRowProps, toolCardId, useRunMember, useRunView } from "./card-runs";
 import { RunBar } from "./components/run-bar";
 import type {
   ToolCalloutData,
@@ -705,7 +705,11 @@ export function LiveToolCallRenderer({
     },
     preferences.cardRunBar,
   );
-  const runClosed = useRunView(agentId, runKey)?.closed === true && preferences.cardRunBar;
+  // A card still going stays drawn under the bar of its closed run.
+  const runClosed =
+    useRunView(agentId, runKey)?.closed === true &&
+    preferences.cardRunBar &&
+    calloutData.status !== "running";
 
   // The daemon side owns the shell, so revealing a file is one RPC. A path the
   // daemon cannot stat answers with an error the press simply ignores.
@@ -791,7 +795,10 @@ export function LiveReasoningRenderer({
     { kind: "thinking", status: item.data.phase === "streaming" ? "running" : "done" },
     preferences.cardRunBar,
   );
-  const runClosed = useRunView(agentId, runKey)?.closed === true && preferences.cardRunBar;
+  const runClosed =
+    useRunView(agentId, runKey)?.closed === true &&
+    preferences.cardRunBar &&
+    item.data.phase !== "streaming";
   const tokens = useMemo(
     () => buildThemeTokens(theme.colors, preferences),
     [theme.colors, preferences],
@@ -903,7 +910,7 @@ export function LiveTodoRenderer({
   const preferences = useEnhancerPreferences();
   useRunMember(
     agentId,
-    `todo:${timestamp.getTime()}`,
+    runItemKey("todo", JSON.stringify(item.data.items), timestamp.getTime()),
     undefined,
     timestamp.getTime(),
     undefined,
@@ -939,7 +946,7 @@ export function LiveTodoRenderer({
   }, [data]);
 
   return (
-    <View {...runRowProps(`todo:${timestamp.getTime()}`)}>
+    <View {...runRowProps(runItemKey("todo", JSON.stringify(item.data.items), timestamp.getTime()))}>
       <TaskList data={taskListData} tokens={tokens} />
     </View>
   );
@@ -976,7 +983,8 @@ export function LiveAssistantRenderer({
   // host puts it: under the newest message, once, not under every reply.
   const itemKey = `assistant:${timestamp.getTime()}`;
   const isTail = useIsTimelineTail(itemKey);
-  useRunMember(agentId, itemKey, undefined, timestamp.getTime(), undefined, preferences.cardRunBar);
+  const runKey = runItemKey("assistant", item.data.text, timestamp.getTime());
+  useRunMember(agentId, runKey, undefined, timestamp.getTime(), undefined, preferences.cardRunBar);
 
   // Job results, IRC relays and reminders arrive as replies because the host
   // files any unclaimed `custom` message under this item kind. They are not
@@ -990,7 +998,7 @@ export function LiveAssistantRenderer({
   const handleRevealPath = usePathOpener(cwd, workspaceId, preferences.pathOpens);
 
   return (
-    <View {...runRowProps(itemKey)}>
+    <View {...runRowProps(runKey)}>
       {envelope ? (
         <SystemCard envelope={envelope} tokens={tokens} />
       ) : (
@@ -1031,7 +1039,7 @@ export function LiveNoticeRenderer({
   const preferences = useEnhancerPreferences();
   useRunMember(
     agentId,
-    `notice:${timestamp.getTime()}`,
+    runItemKey("notice", item.data.message, timestamp.getTime()),
     undefined,
     timestamp.getTime(),
     undefined,
@@ -1058,7 +1066,7 @@ export function LiveNoticeRenderer({
   );
 
   return (
-    <View {...runRowProps(`notice:${timestamp.getTime()}`)}>
+    <View {...runRowProps(runItemKey("notice", item.data.message, timestamp.getTime()))}>
       <NoticeCallout data={noticeData} tokens={tokens} />
     </View>
   );
@@ -1095,7 +1103,7 @@ export function LiveUserMessageRenderer({
   useFrostedGlass(preferences.frostedGlass);
   useRunMember(
     agentId,
-    `user:${timestamp.getTime()}`,
+    runItemKey("user", item.data.text, timestamp.getTime()),
     undefined,
     timestamp.getTime(),
     undefined,
@@ -1143,7 +1151,7 @@ export function LiveUserMessageRenderer({
   const envelope = useMemo(() => parseSystemEnvelope(item.data.text), [item.data.text]);
 
   return (
-    <View {...surfaceProps(runRowProps(`user:${timestamp.getTime()}`), promptRowAnchor(item.data.messageId))}>
+    <View {...surfaceProps(runRowProps(runItemKey("user", item.data.text, timestamp.getTime())), promptRowAnchor(item.data.messageId))}>
       {envelope ? (
         <SystemCard envelope={envelope} tokens={tokens} />
       ) : (

@@ -27,7 +27,12 @@ interface RunBarProps {
 export function RunBar({ agentId, cardKey, enabled, rule, startCollapsed, tokens }: RunBarProps) {
   const run = useRunView(agentId, cardKey);
   useEffect(() => {
-    if (enabled && run?.leads) applyCollapseRule(cardKey, run, rule, startCollapsed);
+    if (!enabled || !run?.leads) return;
+    // Applying the rule changes the store, which re-renders every bar. Done in
+    // the effect, a history with many runs chains one update after another until
+    // React gives up (error 185), so it waits for the commit to end.
+    const timer = setTimeout(() => applyCollapseRule(cardKey, run, rule, startCollapsed), 0);
+    return () => clearTimeout(timer);
   }, [enabled, run, cardKey, rule, startCollapsed]);
   if (!enabled || !run?.leads) return null;
 

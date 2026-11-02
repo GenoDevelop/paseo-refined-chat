@@ -112,6 +112,19 @@ export function reasoningCardId(text: string): string {
   return `reasoning:${hash >>> 0}:${text.length}`;
 }
 
+/**
+ * Key of an item that is not a card. A history loaded in one go stamps many
+ * items alike, so the stamp alone would give two replies one key and the store
+ * would keep only one of them as the end of a run. The start of the text tells
+ * them apart and holds still while a reply streams.
+ */
+export function itemKey(kind: string, text: string, at: number): string {
+  let hash = 5381;
+  const start = text.slice(0, 48);
+  for (let i = 0; i < start.length; i += 1) hash = ((hash << 5) + hash + start.charCodeAt(i)) | 0;
+  return `${kind}:${hash >>> 0}:${at}`;
+}
+
 /** True when a bar has hidden the card; the transformers project it to nothing. */
 export function isCardHidden(id: string): boolean {
   return hidden.has(id);
@@ -229,6 +242,9 @@ export function useRunMember(
  */
 function ordered(list: Member[] | undefined): Member[] | undefined {
   if (!list) return list;
+  // A row can be in the page only after its item reported: a history mounted in
+  // one go would otherwise be ordered by stamps, and those can be equal.
+  for (const member of list) if (!member.el?.isConnected) member.el = findRow(member.key);
   const sorted = [...list].sort((a, b) => {
     if (a.el?.isConnected && b.el?.isConnected) {
       const position = a.el.compareDocumentPosition(b.el);
@@ -443,8 +459,13 @@ function releaseNested(members: Member[]): void {
   notifyHidden();
 }
 
-function closeWith(key: string, view: RunView, auto: boolean): void {
-  const rest = absorb(view.members.slice(1).filter(settled));
+/** Cards of `members` a close may hide; `idle` also leaves the ones still running. */
+function hideable(members: Member[], idle: boolean): Member[] {
+  return members.filter((member) => settled(member) && !(idle && member.status === "running"));
+}
+
+function closeWith(key: string, view: RunView, auto: boolean, idle = false): void {
+  const rest = absorb(hideable(view.members.slice(1), idle));
   closedRuns.set(key, {
     count: rest.count + 1,
     ids: rest.ids,
@@ -477,13 +498,13 @@ export function openRun(key: string): void {
 }
 
 /** Cards that follow a closed run's first can join it: hides them and counts them. */
-function takeIn(key: string, view: RunView): void {
+function takeIn(key: string, view: RunView, idle: boolean): void {
   const closedRun = closedRuns.get(key);
   if (!closedRun) return;
   // A card just hidden stays drawn until the host projects the list again, and
   // the view recomputes meanwhile: count each card once. A card the transformers
   // cannot tell apart cannot be hidden, so it is not part of the run either.
-  const more = absorb(view.extra.filter((member) => member.id && settled(member) && !hidden.has(member.id)));
+  const more = absorb(hideable(view.extra, idle).filter((member) => member.id && !hidden.has(member.id)));
   if (more.ids.length === 0) return;
   closedRuns.set(key, {
     count: closedRun.count + more.count,
@@ -532,15 +553,16 @@ export function applyCollapseRule(
   if (view.closed) {
     if (auto && closedRuns.get(key)?.auto) {
       if (pinned) return openRun(key);
-      if (rule === "always" || !view.running) return takeIn(key, view);
+      return takeIn(key, view, rule === "finished");
     }
-  } else if (
-    auto &&
-    !pinned &&
-    view.hide.length === view.count - 1 &&
-    (rule === "always" || !view.running)
-  ) {
-    return closeWith(key, view, true);
+  } else if (auto && !pinned) {
+    // "When finished" leaves the cards still going where they are and folds the
+    // rest. A first card still going keeps its card under the bar.
+    const idle = rule === "finished";
+    const folds = hideable(view.members.slice(1), idle);
+    if (folds.length > 0 && folds.every((member) => member.id)) {
+      return closeWith(key, view, true, idle);
+    }
   }
   // Nothing absorbs the closed runs drawn inside this one, so they open.
   releaseNested(view.members);
