@@ -91,6 +91,31 @@ Hiding unmounts a card, so its open or closed state would be lost.
 `card-state.ts` saves it by key when it changes, and a card that mounts again starts
 from it. The bar never sets a card's state and a card never sets the bar's.
 
+## Cost on a long history
+
+A chat loaded from top to bottom can have thousands of cards mounted, and every
+one of them reports to the store. Measured on a conversation of about 4000 cards,
+a reload took over two minutes before the changes below and about 12 seconds
+after (10 seconds with the bar off). Keep these when changing the store:
+
+- The order is worked out from one `querySelectorAll("[data-prow]")` and a sort
+  on numbers. Comparing rows pair by pair with `compareDocumentPosition`, or
+  looking each one up with `querySelector`, was nearly all of the two minutes.
+- The runs of an agent are worked out once per version of the store and shared by
+  the cards, and at most every `ORDER_EVERY` ms while items keep arriving. A
+  decision that hides cards asks for the order of the present moment
+  (`freshView`); drawing may use one that is a moment old.
+- `publish` tells the bars once per tick, not once per item.
+- A card gets the same view object while nothing in it changed (`signature`), so
+  `useSyncExternalStore` draws only the cards whose view moved. Cards that merely
+  follow the first of a run almost never do.
+- Changes of the hidden set reach the transformers once per 80 ms: each change
+  makes the host project the whole history again.
+
+To measure, count calls and time in `publish`, the order and `viewOf`, and
+print them in a box on the page; it takes a few lines and the totals show the
+cost at once. Do not guess.
+
 ## Known limits
 
 - A card with no `callId` cannot be hidden. A run with one is not closed by the

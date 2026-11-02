@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { ViewProps } from "react-native";
 import type { CardRunCollapsePreference } from "./preferences";
 import type { CollapseKind } from "./tool-collapse";
@@ -86,9 +86,21 @@ const listeners = new Set<() => void>();
 const hiddenListeners = new Set<() => void>();
 let version = 0;
 
+let notifying = false;
+
+/**
+ * Every item that mounts or changes publishes, and a history mounts thousands at
+ * once: telling the bars after each would redraw all of them once per item. The
+ * version moves at once, the bars hear of it once per tick.
+ */
 function publish(): void {
   version += 1;
-  for (const listener of listeners) listener();
+  if (notifying) return;
+  notifying = true;
+  queueMicrotask(() => {
+    notifying = false;
+    for (const listener of listeners) listener();
+  });
 }
 
 function subscribe(listener: () => void): () => void {
@@ -97,8 +109,6 @@ function subscribe(listener: () => void): () => void {
     listeners.delete(listener);
   };
 }
-
-const snapshot = (): number => version;
 
 /** Identity of a tool call for the transformers: its call id, when it has one. */
 export function toolCardId(callId: string | undefined): string | undefined {
@@ -242,16 +252,20 @@ export function useRunMember(
  */
 function ordered(list: Member[] | undefined): Member[] | undefined {
   if (!list) return list;
-  // A row can be in the page only after its item reported: a history mounted in
-  // one go would otherwise be ordered by stamps, and those can be equal.
-  for (const member of list) if (!member.el?.isConnected) member.el = findRow(member.key);
-  const sorted = [...list].sort((a, b) => {
-    if (a.el?.isConnected && b.el?.isConnected) {
-      const position = a.el.compareDocumentPosition(b.el);
-      if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-      if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-      return 0;
+  // One pass over the page gives the place of every row; comparing the rows of
+  // thousands of items one pair at a time, or looking each up, costs far more.
+  const places = new Map<string, number>();
+  if (typeof document !== "undefined") {
+    const rows = document.querySelectorAll("[data-prow]");
+    for (let i = 0; i < rows.length; i += 1) {
+      const key = rows[i]!.getAttribute("data-prow");
+      if (key && !places.has(key)) places.set(key, i);
     }
+  }
+  const sorted = [...list].sort((a, b) => {
+    const placeA = places.get(a.key);
+    const placeB = places.get(b.key);
+    if (placeA !== undefined && placeB !== undefined) return placeA - placeB;
     return Math.abs(a.at - b.at) < TIE ? 0 : a.at - b.at;
   });
   // A list drawn newest first reads backwards: the stamps say which way it runs.
@@ -265,15 +279,56 @@ function ordered(list: Member[] | undefined): Member[] | undefined {
   return earlier > later ? sorted.reverse() : sorted;
 }
 
+interface Order {
+  /** The run of every card, shared by the cards of it. */
+  runs: Map<string, Member[]>;
+}
+
+/** The order is worked out at most this often while items keep arriving. */
+const ORDER_EVERY = 100;
+let orderedAt = -1;
+let orderedTime = 0;
+let orderedLater: ReturnType<typeof setTimeout> | null = null;
+const orderedCache = new Map<string, Order>();
+
+/** The runs of an agent, worked out once per version of the store. */
+function orderOf(agentId: string): Order {
+  if (orderedAt !== version) {
+    if (performance.now() - orderedTime >= ORDER_EVERY) {
+      orderedCache.clear();
+      orderedAt = version;
+      orderedTime = performance.now();
+    } else if (!orderedLater) {
+      // Served as it was; the bars hear again once the order is worked out.
+      orderedLater = setTimeout(() => {
+        orderedLater = null;
+        publish();
+      }, ORDER_EVERY);
+    }
+  }
+  let order = orderedCache.get(agentId);
+  if (!order) {
+    const list = ordered(byAgent.get(agentId)) ?? [];
+    const runs = new Map<string, Member[]>();
+    for (let i = 0; i < list.length; ) {
+      if (!list[i]!.card) {
+        i += 1;
+        continue;
+      }
+      let end = i;
+      while (end + 1 < list.length && list[end + 1]!.card) end += 1;
+      const run = list.slice(i, end + 1);
+      for (const member of run) runs.set(member.key, run);
+      i = end + 1;
+    }
+    order = { runs };
+    orderedCache.set(agentId, order);
+  }
+  return order;
+}
+
 function runOf(agentId: string, key: string): Member[] | null {
-  const list = ordered(byAgent.get(agentId));
-  const index = list ? list.findIndex((entry) => entry.key === key) : -1;
-  if (!list || index === -1 || !list[index]!.card) return null;
-  let start = index;
-  while (start > 0 && list[start - 1]!.card) start -= 1;
-  let end = index;
-  while (end < list.length - 1 && list[end + 1]!.card) end += 1;
-  return list.slice(start, end + 1);
+  return orderOf(agentId).runs.get(key) ?? null;
 }
 
 function countKinds(members: Member[]): KindCounts {
@@ -341,53 +396,107 @@ export interface RunView {
   members: Member[];
 }
 
-export function useRunView(agentId: string, key: string): RunView | null {
-  const current = useSyncExternalStore(subscribe, snapshot, snapshot);
-  return useMemo(() => {
-    const members = runOf(agentId, key);
-    const closedRun = closedRuns.get(key);
-    // A run that closed before the older cards of its own run had mounted is no
-    // longer first: it is drawn as a plain card until the run takes it in.
-    if (closedRun && (!members || members[0]!.key === key)) {
-      const drawn = members ?? [];
-      const hiddenStates = closedRun.ids.map((id) => reported.get(id));
-      return {
-        leads: true,
-        count: closedRun.count,
-        closed: true,
-        summary: describeKinds(closedRun.kinds, closedRun.count),
-        running:
-          hiddenStates.includes("running") || drawn.some((member) => member.status === "running"),
-        failed:
-          hiddenStates.filter((state) => state === "failed").length +
-          drawn.filter((member) => member.status === "failed").length,
-        hide: [],
-        extra: drawn.slice(1),
-        members: drawn,
-      };
-    }
-    if (!members || members.length < MIN_RUN) return null;
+function computeView(agentId: string, key: string): RunView | null {
+  const members = runOf(agentId, key);
+  const closedRun = closedRuns.get(key);
+  // A run that closed before the older cards of its own run had mounted is no
+  // longer first: it is drawn as a plain card until the run takes it in.
+  if (closedRun && (!members || members[0]!.key === key)) {
+    const drawn = members ?? [];
+    const hiddenStates = closedRun.ids.map((id) => reported.get(id));
     return {
-      leads: members[0]!.key === key,
-      count: members.length,
-      closed: false,
-      summary: describeKinds(countKinds(members), members.length),
-      running: members.some((member) => member.status === "running"),
-      failed: members.filter((member) => member.status === "failed").length,
-      hide: members
-        .slice(1)
-        .filter(settled)
-        .flatMap((member) => (member.id ? [member.id] : [])),
-      extra: [],
-      members,
+      leads: true,
+      count: closedRun.count,
+      closed: true,
+      summary: describeKinds(closedRun.kinds, closedRun.count),
+      running:
+        hiddenStates.includes("running") || drawn.some((member) => member.status === "running"),
+      failed:
+        hiddenStates.filter((state) => state === "failed").length +
+        drawn.filter((member) => member.status === "failed").length,
+      hide: [],
+      extra: drawn.slice(1),
+      members: drawn,
     };
-    // `current` is the store's version: the run is recomputed when it moves.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agentId, key, current]);
+  }
+  if (!members || members.length < MIN_RUN) return null;
+  return {
+    leads: members[0]!.key === key,
+    count: members.length,
+    closed: false,
+    summary: describeKinds(countKinds(members), members.length),
+    running: members.some((member) => member.status === "running"),
+    failed: members.filter((member) => member.status === "failed").length,
+    hide: members
+      .slice(1)
+      .filter(settled)
+      .flatMap((member) => (member.id ? [member.id] : [])),
+    extra: [],
+    members,
+  };
 }
 
+/** What a bar shows, in a form that says whether it changed. */
+function signature(view: RunView | null, key: string): string {
+  if (!view) return "none";
+  if (!view.leads) return "follows";
+  const cards = (list: Member[]) => list.map((m) => `${m.key}${m.status}${m.kind ?? ""}`).join(",");
+  return [
+    view.closed,
+    view.count,
+    view.summary,
+    view.running,
+    view.failed,
+    view.hide.length,
+    cards(view.members),
+    cards(view.extra),
+    touched.has(key),
+  ].join("|");
+}
+
+const views = new Map<string, { sig: string; view: RunView | null }>();
+
+/** The view of a card with the order worked out now, for a decision that acts on it. */
+export function freshView(agentId: string, key: string): RunView | null {
+  orderedTime = Number.NEGATIVE_INFINITY;
+  return viewOf(agentId, key);
+}
+
+/** The view of a card, the same object while nothing in it changed. */
+function viewOf(agentId: string, key: string): RunView | null {
+  const next = computeView(agentId, key);
+  const sig = signature(next, key);
+  const id = `${agentId}::${key}`;
+  const known = views.get(id);
+  if (known && known.sig === sig) return known.view;
+  views.set(id, { sig, view: next });
+  return next;
+}
+
+export function useRunView(agentId: string, key: string): RunView | null {
+  // A card is drawn again only when its own view changed, not on every move of
+  // the store: with thousands of cards, a redraw of all of them per change is
+  // the freeze.
+  return useSyncExternalStore(
+    subscribe,
+    () => viewOf(agentId, key),
+    () => viewOf(agentId, key),
+  );
+}
+
+let hiddenTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Changing the hidden set makes the host project the whole history again, so
+ * closing many runs at once (a history loading with the collapse rule on) must
+ * cost one projection, not one per run.
+ */
 function notifyHidden(): void {
-  for (const listener of hiddenListeners) listener();
+  if (hiddenTimer) return;
+  hiddenTimer = setTimeout(() => {
+    hiddenTimer = null;
+    for (const listener of hiddenListeners) listener();
+  }, 80);
 }
 
 /**

@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Glyph } from "./glyph";
 import { unselectable } from "./selection";
-import { applyCollapseRule, closeRun, openRun, useRunView } from "../card-runs";
+import { applyCollapseRule, closeRun, freshView, openRun, useRunView } from "../card-runs";
 import type { CardRunCollapsePreference } from "../preferences";
 import type { CollapseKind } from "../tool-collapse";
 import type { ExtendedThemeTokens } from "./theme-tokens";
@@ -31,9 +31,13 @@ export function RunBar({ agentId, cardKey, enabled, rule, startCollapsed, tokens
     // Applying the rule changes the store, which re-renders every bar. Done in
     // the effect, a history with many runs chains one update after another until
     // React gives up (error 185), so it waits for the commit to end.
-    const timer = setTimeout(() => applyCollapseRule(cardKey, run, rule, startCollapsed), 0);
+    const timer = setTimeout(() => {
+      // The order shown may be a moment old; a decision to hide cards uses the present one.
+      const now = freshView(agentId, cardKey);
+      if (now?.leads) applyCollapseRule(cardKey, now, rule, startCollapsed);
+    }, 0);
     return () => clearTimeout(timer);
-  }, [enabled, run, cardKey, rule, startCollapsed]);
+  }, [enabled, run, agentId, cardKey, rule, startCollapsed]);
   if (!enabled || !run?.leads) return null;
 
   const status =
