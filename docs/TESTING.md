@@ -72,6 +72,29 @@ Use a project that holds a Markdown file with a heading, a link to another file 
   that line, in the output and in the error output alike. A URL, a version number
   and a `\\host\share` path stay plain text.
 
+## Touch selection (iOS)
+
+Use an iPhone or iPad; Android and web must look and behave as before.
+
+- Reply footer: **Copy** and **Select** sit side by side. **Select** opens a
+  "Select text" dialog holding the whole reply.
+- Prompt bubble: a text-select icon follows the copy icon and opens the prompt.
+- Code block header: **Select** follows **Copy** and opens the block's whole
+  code, including lines hidden by "Show N more lines".
+- Prose, headings, lists and quotes in a reply are drawn by Paseo's native view:
+  long-press a word, drag the handles across paragraphs and tap Copy. They look
+  like Paseo's own replies, not the plugin's typography.
+- Code blocks and tables keep the plugin's look. Long-press a table cell or a
+  code line: the dialog opens with the reply (table) or the code (code line).
+- A reply that alternates prose, a code block and prose draws three pieces; each
+  prose piece selects on its own, and a selection does not cross the code block.
+- In the dialog, long-press the text, drag the handles over part of it and tap
+  Copy; paste elsewhere and check only that part arrived. Select All copies all.
+- Press **Copy** on the same blocks: it still copies the whole text and shows
+  "Copied".
+- On Android and web no **Select** control appears, and a long-press does not
+  open the dialog.
+
 ## Interoperability
 
 - Keep the original Beautiful Chat plugin disabled. Both intercept the

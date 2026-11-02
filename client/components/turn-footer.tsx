@@ -6,6 +6,7 @@ import { unselectable } from "./selection";
 import { formatMessageTime } from "./message-time";
 import { radius } from "./theme-tokens";
 import type { ExtendedThemeTokens } from "./theme-tokens";
+import { TextSelectionDialog, touchSelectionEnabled, useTextSelection } from "./text-selection";
 
 /**
  * The host's own reply footer — copy, fork and the turn's time — is drawn by
@@ -31,6 +32,7 @@ const COPIED_MS = 1600;
 
 export function AssistantFooter({ text, at, tokens }: AssistantFooterProps) {
   const [copied, setCopied] = useState(false);
+  const { snapshot, openSelection, closeSelection } = useTextSelection(text);
 
   const handleCopy = useCallback(() => {
     void copyText(text)
@@ -71,6 +73,14 @@ export function AssistantFooter({ text, at, tokens }: AssistantFooterProps) {
           color: copied ? tokens.success : tokens.foregroundMuted,
           ...unselectable,
         },
+        selectButton: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 4,
+          paddingHorizontal: 6,
+          paddingVertical: 3,
+          borderRadius: radius.block,
+        },
         time: {
           fontFamily: tokens.fontUi,
           fontSize: tokens.fs(11),
@@ -87,6 +97,7 @@ export function AssistantFooter({ text, at, tokens }: AssistantFooterProps) {
 
   return (
     <View style={styles.container}>
+      <TextSelectionDialog text={snapshot} onClose={closeSelection} tokens={tokens} />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={copied ? "Reply copied" : "Copy reply"}
@@ -100,6 +111,18 @@ export function AssistantFooter({ text, at, tokens }: AssistantFooterProps) {
         />
         <Text style={styles.copyLabel}>{copied ? "Copied" : "Copy"}</Text>
       </Pressable>
+      {touchSelectionEnabled ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Select part of the reply"
+          accessibilityHint="Opens a text field where the platform's selection handles work"
+          onPress={openSelection}
+          style={styles.selectButton}
+        >
+          <Glyph name="TextSelect" size={12} color={tokens.foregroundMuted} />
+          <Text style={styles.copyLabel}>Select</Text>
+        </Pressable>
+      ) : null}
       <Text style={styles.time}>{time}</Text>
     </View>
   );

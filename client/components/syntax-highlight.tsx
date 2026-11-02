@@ -1,6 +1,12 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { copyText } from "@getpaseo/plugin/client/react-native";
+import {
+  TextSelectionDialog,
+  longPressSelection,
+  touchSelectionEnabled,
+  useTextSelection,
+} from "./text-selection";
 import { LINK_UNDERLINE, plainLinkProps } from "./markdown/link-style";
 import { Glyph } from "./glyph";
 import { frosted } from "./frosted";
@@ -499,6 +505,7 @@ export function SyntaxHighlightBlock({
   onHighlightPosition,
 }: SyntaxHighlightProps) {
   const [copied, setCopied] = useState(false);
+  const { snapshot, openSelection, closeSelection } = useTextSelection(code);
   // The marked row's offset inside the code area and the code area's inside the
   // block: layout reports each separately and in no fixed order.
   const [rowY, setRowY] = useState<number | null>(null);
@@ -627,6 +634,12 @@ export function SyntaxHighlightBlock({
           paddingVertical: 2,
           borderRadius: radius.chip,
         },
+        headerActions: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 4,
+          flexShrink: 0,
+        },
         copyButton: {
           flexDirection: "row",
           alignItems: "center",
@@ -641,6 +654,13 @@ export function SyntaxHighlightBlock({
           fontFamily: tokens.fontUi,
           fontSize: tokens.fs(11),
           color: copied ? tokens.success : tokens.foregroundMuted,
+          fontWeight: "500",
+          ...unselectable,
+        },
+        selectText: {
+          fontFamily: tokens.fontUi,
+          fontSize: tokens.fs(11),
+          color: tokens.foregroundMuted,
           fontWeight: "500",
           ...unselectable,
         },
@@ -675,6 +695,7 @@ export function SyntaxHighlightBlock({
     // No pointer glow here: a code block is an inner surface, and lighting it
     // separately from the card that holds it reads as two hovers at once.
     <View {...surfaceProps(frosted, selectionSurface)} style={styles.container}>
+      <TextSelectionDialog text={snapshot} onClose={closeSelection} tokens={tokens} />
       {(filename || language) && (
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -708,16 +729,30 @@ export function SyntaxHighlightBlock({
               </Text>
             ) : null}
           </View>
-          <Pressable onPress={handleCopy} style={styles.copyButton}>
-            <Pop trigger={copied}>
-              <Glyph
-                name={copied ? "Check" : "Copy"}
-                size={12}
-                color={copied ? tokens.success : tokens.foregroundMuted}
-              />
-            </Pop>
-            <Text style={styles.copyText}>{copied ? "Copied" : "Copy"}</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable onPress={handleCopy} style={styles.copyButton}>
+              <Pop trigger={copied}>
+                <Glyph
+                  name={copied ? "Check" : "Copy"}
+                  size={12}
+                  color={copied ? tokens.success : tokens.foregroundMuted}
+                />
+              </Pop>
+              <Text style={styles.copyText}>{copied ? "Copied" : "Copy"}</Text>
+            </Pressable>
+            {touchSelectionEnabled ? (
+              <Pressable
+                onPress={openSelection}
+                accessibilityRole="button"
+                accessibilityLabel="Select part of the code"
+                accessibilityHint="Opens a text field where the platform's selection handles work"
+                style={styles.copyButton}
+              >
+                <Glyph name="TextSelect" size={12} color={tokens.foregroundMuted} />
+                <Text style={styles.selectText}>Select</Text>
+              </Pressable>
+            ) : null}
+          </View>
         </View>
       )}
 
@@ -788,7 +823,7 @@ export function SyntaxHighlightBlock({
               ) : showLineNumbers && !(isDiff && relativeDiff) ? (
                 <Text style={styles.lineNumber}>{startLine + idx}</Text>
               ) : null}
-              <Text selectable style={styles.lineContent}>
+              <Text selectable {...longPressSelection(openSelection)} style={styles.lineContent}>
                 {bodyLine
                   ? renderDiffBodyLine(line, bodyLine, tokens, emphasis)
                   : shikiLine

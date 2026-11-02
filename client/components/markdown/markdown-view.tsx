@@ -7,6 +7,14 @@ import { selectableSurface, unselectable } from "../selection";
 import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
 import { openLink } from "../open-link";
+import { Markdown as HostMarkdown } from "@getpaseo/plugin/client/ui";
+import {
+  TextSelectionDialog,
+  longPressSelection,
+  touchSelectionEnabled,
+  useTextSelection,
+} from "../text-selection";
+import { blockSource, isNativeBlock } from "./native-prose";
 import { pathKind, type PathKind } from "./file-path";
 import { linkProps, pathLinkProps, plainLinkProps } from "./link-style";
 import { headingSlugs, parseFileLink } from "../../file-link";
@@ -39,6 +47,12 @@ export interface MarkdownViewProps {
   /** A heading's slug to mark instead, as `#usage` in a link names it. */
   anchor?: string;
   onLinePosition?: (y: number) => void;
+  /**
+   * iOS: draw prose, headings, lists and quotes with Paseo's native renderer, so
+   * a selection can start in them. Code, tables and pictures stay with the plugin.
+   * Set for a reply; a file preview marks lines and keeps the plugin's drawing.
+   */
+  nativeProse?: boolean;
 }
 
 type MdTableBlock = Extract<MdBlock, { kind: "table" }>;
@@ -214,6 +228,8 @@ interface RenderContext {
   metrics: VariantMetrics;
   /** Lines of a code block shown before the rest folds; zero shows all. */
   codeMaxLines: number;
+  /** iOS: a long-press on prose opens the Select dialog. Empty elsewhere. */
+  longPress: { onLongPress?: () => void };
 }
 
 /**
@@ -259,8 +275,9 @@ export function MarkdownView({
   line,
   anchor,
   onLinePosition,
+  nativeProse = false,
 }: MarkdownViewProps) {
-  const { blocks, starts, slugs } = useMemo(() => {
+  const { blocks, starts, slugs, lines } = useMemo(() => {
     const opened: number[] = [];
     const parsed = parseMarkdown(text, opened);
     // One slug per block; only a heading has one.
@@ -272,6 +289,7 @@ export function MarkdownView({
     return {
       blocks: parsed,
       starts: opened,
+      lines: text.replace(/\r\n?/g, "\n").split("\n"),
       slugs: parsed.map((block) => (block.kind === "heading" ? named[next++]! : null)),
     };
   }, [text]);
@@ -292,9 +310,10 @@ export function MarkdownView({
     return { ...built, mark: marks ? built.mark : null };
   }, [tokens, variant, metrics, marks]);
   const { codeMaxLines } = useEnhancerPreferences();
+  const { snapshot, openSelection, closeSelection } = useTextSelection(text);
   const context = useMemo<RenderContext>(
-    () => ({ styles, tokens, metrics, codeMaxLines }),
-    [styles, tokens, metrics, codeMaxLines],
+    () => ({ styles, tokens, metrics, codeMaxLines, longPress: longPressSelection(openSelection) }),
+    [styles, tokens, metrics, codeMaxLines, openSelection],
   );
 
   const markBlock = (node: React.ReactNode, at: number) => (
@@ -309,9 +328,29 @@ export function MarkdownView({
 
   // Pictures that follow one another sit in one row that wraps, not one under
   // the other: a reply with several screenshots reads as a strip, not a column.
+  // A host older than the native `Markdown` export leaves it undefined, and the
+  // plugin keeps drawing everything itself.
+  const native =
+    nativeProse &&
+    touchSelectionEnabled &&
+    Boolean(HostMarkdown) &&
+    starts.length === blocks.length;
+
   const rendered: React.ReactNode[] = [];
   for (let index = 0; index < blocks.length; index++) {
     const block = blocks[index]!;
+    if (native && isNativeBlock(block, marks)) {
+      // A run of such blocks is one native view, so a selection can cross them.
+      let end = index + 1;
+      while (end < blocks.length && isNativeBlock(blocks[end]!, marks)) end++;
+      rendered.push(
+        <View key={`n${index}`} style={index === 0 ? undefined : { marginTop: metrics.blockGap }}>
+          <HostMarkdown>{blockSource(lines, starts, index, end)}</HostMarkdown>
+        </View>,
+      );
+      index = end - 1;
+      continue;
+    }
     if (block.kind !== "image") {
       const node = renderBlock(block, `b${index}`, index === 0, context);
       rendered.push(index === marked ? markBlock(node, index) : node);
@@ -347,6 +386,7 @@ export function MarkdownView({
 
   return (
     <View {...selectionSurface} style={styles.root}>
+      <TextSelectionDialog text={snapshot} onClose={closeSelection} tokens={tokens} />
       {rendered}
     </View>
   );
@@ -583,7 +623,7 @@ function renderBlock(
       const headingStyle = styles[HEADING_KEYS[block.level - 1] ?? "h4"];
       return (
         <View key={key} style={first ? styles.headingBlockFirst : styles.headingBlock}>
-          <Text selectable style={headingStyle}>
+          <Text selectable {...context.longPress} style={headingStyle}>
             {metrics.headingHash ? (
               <Text style={styles.headingHash}>{HASH_LABELS[block.level - 1] ?? "# "}</Text>
             ) : null}
@@ -596,7 +636,7 @@ function renderBlock(
 
     case "paragraph":
       return (
-        <Text key={key} selectable style={styles.paragraph}>
+        <Text key={key} selectable {...context.longPress} style={styles.paragraph}>
           {renderInline(block.spans, styles, key)}
         </Text>
       );
@@ -616,7 +656,7 @@ function renderBlock(
       return (
         <View key={key} style={styles.quote}>
           {block.paragraphs.map((spans, index) => (
-            <Text key={`${key}q${index}`} selectable style={styles.quoteText}>
+            <Text key={`${key}q${index}`} selectable {...context.longPress} style={styles.quoteText}>
               {renderInline(spans, styles, `${key}q${index}`)}
             </Text>
           ))}
@@ -654,7 +694,7 @@ function renderBlock(
 
     case "plain":
       return (
-        <Text key={key} selectable style={styles.plain}>
+        <Text key={key} selectable {...context.longPress} style={styles.plain}>
           {block.text}
         </Text>
       );
@@ -673,7 +713,11 @@ function renderItem(
   // The body is the flexible column, so a wrapped second line starts under the
   // item's first character instead of under its marker.
   const body = (
-    <Text selectable style={item.checked === true ? styles.itemTextDone : styles.itemText}>
+    <Text
+      selectable
+      {...context.longPress}
+      style={item.checked === true ? styles.itemTextDone : styles.itemText}
+    >
       {renderInline(item.spans, styles, key)}
     </Text>
   );
@@ -739,6 +783,7 @@ function renderTable(block: MdTableBlock, key: string, context: RenderContext): 
               <Text
                 key={cellKey}
                 selectable
+                {...context.longPress}
                 style={[
                   styles.tableHeaderCell,
                   styles[ALIGN_KEYS[block.align[column] ?? "left"]],
@@ -758,6 +803,7 @@ function renderTable(block: MdTableBlock, key: string, context: RenderContext): 
                 <Text
                   key={cellKey}
                   selectable
+                  {...context.longPress}
                   style={[
                     styles.tableCell,
                     styles[ALIGN_KEYS[block.align[column] ?? "left"]],

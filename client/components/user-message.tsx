@@ -10,6 +10,12 @@ import { selectableSurface } from "./selection";
 import { selectionSurface } from "./selection-actions";
 import { planFold, useFold } from "../fold";
 import { FoldBar } from "./fold-bar";
+import {
+  TextSelectionDialog,
+  longPressSelection,
+  touchSelectionEnabled,
+  useTextSelection,
+} from "./text-selection";
 
 export interface TurnUsage {
   inputTokens?: number;
@@ -90,6 +96,7 @@ export function UserMessage({
   maxLines = 0,
 }: UserMessageProps) {
   const [copied, setCopied] = useState(false);
+  const { snapshot, openSelection, closeSelection } = useTextSelection(text);
   const handleCopy = useCallback(() => {
     // The host owns clipboard access. Reaching for navigator directly would
     // only work on web and would bypass its permission handling.
@@ -206,6 +213,7 @@ export function UserMessage({
 
   return (
     <View {...selectionSurface} style={styles.container}>
+      <TextSelectionDialog text={snapshot} onClose={closeSelection} tokens={tokens} />
       <View style={styles.body}>
         <View style={styles.metaRow}>
           <Text selectable style={styles.label}>
@@ -230,9 +238,21 @@ export function UserMessage({
               />
             </Pop>
           </Pressable>
+          {touchSelectionEnabled ? (
+            <Pressable
+              onPress={openSelection}
+              accessibilityRole="button"
+              accessibilityLabel="Select part of the prompt"
+              accessibilityHint="Opens a text field where the platform's selection handles work"
+              style={styles.copyButton}
+            >
+              <Glyph name="TextSelect" size={11} color={tokens.userTextMuted} />
+            </Pressable>
+          ) : null}
         </View>
         <Text
           selectable
+          {...longPressSelection(openSelection)}
           style={styles.text}
           numberOfLines={plan && folded ? maxLines : undefined}
         >
