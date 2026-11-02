@@ -167,8 +167,9 @@ export interface EnhancerPreferences {
   /** A bar over two or more consecutive cards that hides all but the first, or shows them again. */
   cardRunBar: boolean;
   /**
-   * Whether a run closes on its own: never, once every card of it has finished
-   * without a failure, or as soon as it has enough cards. A run the reader opened
+   * Whether a run closes on its own: never, by folding the cards that have finished
+   * (cards still going stay drawn) unless one failed, or as soon as it has enough
+   * cards. A run the reader opened
    * or closed with the bar keeps that state.
    */
   cardRunCollapse: CardRunCollapsePreference;

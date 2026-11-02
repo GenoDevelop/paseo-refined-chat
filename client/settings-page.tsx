@@ -1227,7 +1227,7 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         {preferences.cardRunBar && (
           <ChoiceRow<CardRunCollapsePreference>
             title="Collapse runs of cards"
-            description="Whether a run closes on its own. Never leaves it to the bar. When finished closes it once every card has ended. Always closes it as soon as it has two cards, and the cards that follow. A failed card keeps its run open, as it keeps itself open, unless its kind starts collapsed. A run you opened or closed with the bar keeps that state."
+            description="Whether a run closes on its own. Never leaves it to the bar. When finished folds the cards that have ended and leaves the ones still going drawn under the bar, taking them in as they end. Always closes it as soon as it has two cards, and the cards that follow. A failed card keeps its run open, as it keeps itself open, unless its kind starts collapsed. A run you opened or closed with the bar keeps that state."
             value={preferences.cardRunCollapse}
             options={[
               { value: "never", label: "Never" },
