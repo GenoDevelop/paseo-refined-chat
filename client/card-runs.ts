@@ -80,6 +80,9 @@ const closedRuns = new Map<string, ClosedRun>();
 const hidden = new Set<string>();
 /** Runs the reader opened or closed with the bar: the collapse rule leaves them alone. */
 const touched = new Set<string>();
+/** Runs just opened, whose cards have not all mounted again: what they held. */
+const reopening = new Map<string, ClosedRun>();
+const REOPEN_FOR = 1500;
 /** The state of hidden cards, as the transformers still see them. */
 const reported = new Map<string, CardStatus>();
 const listeners = new Set<() => void>();
@@ -419,6 +422,20 @@ function computeView(agentId: string, key: string): RunView | null {
       members: drawn,
     };
   }
+  const reopened = reopening.get(key);
+  if (reopened && members && members[0]!.key === key && members.length < reopened.count) {
+    return {
+      leads: true,
+      count: reopened.count,
+      closed: false,
+      summary: describeKinds(reopened.kinds, reopened.count),
+      running: members.some((member) => member.status === "running"),
+      failed: members.filter((member) => member.status === "failed").length,
+      hide: [],
+      extra: [],
+      members,
+    };
+  }
   if (!members || members.length < MIN_RUN) return null;
   return {
     leads: members[0]!.key === key,
@@ -491,12 +508,19 @@ let hiddenTimer: ReturnType<typeof setTimeout> | null = null;
  * closing many runs at once (a history loading with the collapse rule on) must
  * cost one projection, not one per run.
  */
-function notifyHidden(): void {
-  if (hiddenTimer) return;
-  hiddenTimer = setTimeout(() => {
+function notifyHidden(now = false): void {
+  const tell = () => {
     hiddenTimer = null;
     for (const listener of hiddenListeners) listener();
-  }, 80);
+  };
+  // A press of the bar is answered at once; only the rule, which can close
+  // hundreds of runs in a row, waits to be told together.
+  if (now) {
+    if (hiddenTimer) clearTimeout(hiddenTimer);
+    tell();
+    return;
+  }
+  if (!hiddenTimer) hiddenTimer = setTimeout(tell, 80);
 }
 
 /**
@@ -586,7 +610,7 @@ function closeWith(key: string, view: RunView, auto: boolean, idle = false): voi
   });
   for (const id of rest.ids) hidden.add(id);
   publish();
-  notifyHidden();
+  notifyHidden(!auto);
 }
 
 /** The reader closed the run with the bar: hides every card but the first. */
@@ -601,9 +625,16 @@ export function openRun(key: string): void {
   const closedRun = closedRuns.get(key);
   if (!closedRun) return;
   closedRuns.delete(key);
+  // The cards come back once the host has projected them again; until they have
+  // mounted the run would look like one card, and its bar would blink out.
+  reopening.set(key, closedRun);
+  setTimeout(() => {
+    reopening.delete(key);
+    publish();
+  }, REOPEN_FOR);
   for (const id of closedRun.ids) hidden.delete(id);
   publish();
-  notifyHidden();
+  notifyHidden(true);
 }
 
 /** Cards that follow a closed run's first can join it: hides them and counts them. */
