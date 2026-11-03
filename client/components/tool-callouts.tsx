@@ -27,6 +27,7 @@ import { selectionCodeText, selectionSurface } from "./selection-actions";
 import type { ToolCalloutData } from "../../shared/contracts";
 import { lineSelector } from "../../shared/file-rpc";
 import { displayPath } from "../file-link";
+import { sameAnswer } from "../ask-question";
 import { shouldAutoCollapse } from "../tool-collapse";
 import type { AutoCollapseRules } from "../tool-collapse";
 
@@ -126,7 +127,7 @@ export function ToolCallout({
     data.tool === "edit" ||
     data.tool === "eval" ||
     (data.tool === "mcp" && Boolean(data.mcp)) ||
-    (data.tool === "ask" && Boolean(data.askOptions)) ||
+    (data.tool === "ask" && Boolean(data.askQuestions?.length)) ||
     (data.tool === "task" && Boolean(data.subagent)) ||
     (data.tool === "hub" && Boolean(data.hub)) ||
     (data.tool === "paseo" && Boolean(data.paseo));
@@ -231,16 +232,7 @@ export function ToolCallout({
   const iconColor =
     data.tool === "git" ? "#F05032" : data.tool === "github" ? tokens.foreground : tokens.accent;
 
-  // A reply that matches no offered label is free text the user typed, so it
-  // is labelled as such rather than pretending an option was picked.
-  const answered = data.askAnswer ?? [];
-  const typedReply =
-    answered.length > 0 &&
-    !answered.some((answer) =>
-      (data.askOptions ?? []).some(
-        (option) => option.label.trim().toLowerCase() === answer.trim().toLowerCase(),
-      ),
-    );
+  const askQuestions = data.askQuestions ?? [];
 
   const styles = useMemo(
     () =>
@@ -407,6 +399,20 @@ export function ToolCallout({
         // Ask tool options
         askContainer: {
           gap: 8,
+        },
+        askQuestionText: {
+          fontFamily: tokens.fontUi,
+          fontSize: tokens.fs(13),
+          fontWeight: "600",
+          lineHeight: tokens.fs(19),
+          color: tokens.foreground,
+          marginBottom: 6,
+        },
+        askQuestionGap: {
+          marginTop: 14,
+          paddingTop: 12,
+          borderTopWidth: 1,
+          borderTopColor: tokens.borderSubtle,
         },
         askPrompt: {
           fontFamily: tokens.fontUi,
@@ -1013,61 +1019,85 @@ export function ToolCallout({
             </View>
           )}
 
-          {data.tool === "ask" && data.askOptions && (
+          {data.tool === "ask" && askQuestions.length > 0 && (
             <View style={styles.askContainer}>
-              <Text selectable style={styles.askPrompt}>
-                {answered.length > 0 ? "Options offered:" : "Waiting for a decision:"}
-              </Text>
-              {data.askOptions.map((opt) => {
-                // The answer is whatever the tool reported, so a label match
-                // marks the chosen row. A typed reply matches nothing and is
-                // shown on its own line below.
-                const isChosen = (data.askAnswer ?? []).some(
-                  (answer) => answer.trim().toLowerCase() === opt.label.trim().toLowerCase(),
-                );
+              {askQuestions.map((asked, questionIndex) => {
+                const answered = asked.answers.length > 0;
+                // A reply that matches no offered label is free text the user
+                // typed, so it is labelled as such rather than as a pick.
+                const typedReply =
+                  answered &&
+                  !asked.answers.some((answer) =>
+                    asked.options.some((option) => sameAnswer(option.label, answer)),
+                  );
                 return (
-                  <View
-                    key={opt.id}
-                    style={[styles.askOptionCard, isChosen && styles.askOptionCardSelected]}
-                  >
-                    <View style={styles.askOptionLeft}>
-                      <View style={styles.askOptionLabelRow}>
-                        <Text
-                          selectable
-                          style={[styles.askOptionLabel, isChosen && styles.askOptionLabelChosen]}
+                  <View key={questionIndex} style={questionIndex > 0 ? styles.askQuestionGap : undefined}>
+                    {asked.question ? (
+                      <Text selectable style={styles.askQuestionText}>
+                        {asked.header ? `${asked.header}: ` : ""}
+                        {asked.question}
+                      </Text>
+                    ) : null}
+                    {asked.options.length > 0 ? (
+                      <Text selectable style={styles.askPrompt}>
+                        {answered
+                          ? "Options offered:"
+                          : isRunning
+                            ? "Waiting for a decision:"
+                            : "Options offered, no answer recorded:"}
+                      </Text>
+                    ) : null}
+                    {asked.options.map((opt) => {
+                      // The answer is whatever the tool reported, so a label
+                      // match marks the chosen row. A typed reply matches
+                      // nothing and is shown on its own line below.
+                      const isChosen = asked.answers.some((answer) => sameAnswer(answer, opt.label));
+                      return (
+                        <View
+                          key={opt.id}
+                          style={[styles.askOptionCard, isChosen && styles.askOptionCardSelected]}
                         >
-                          {opt.label}
+                          <View style={styles.askOptionLeft}>
+                            <View style={styles.askOptionLabelRow}>
+                              <Text
+                                selectable
+                                style={[styles.askOptionLabel, isChosen && styles.askOptionLabelChosen]}
+                              >
+                                {opt.label}
+                              </Text>
+                              {opt.recommended ? (
+                                <Text selectable style={styles.recommendedBadge}>
+                                  Recommended
+                                </Text>
+                              ) : null}
+                            </View>
+                            {opt.description ? (
+                              <Text selectable style={styles.askOptionDesc}>
+                                {opt.description}
+                              </Text>
+                            ) : null}
+                          </View>
+                          {isChosen ? (
+                            <Glyph name="CheckCircle" size={16} color={tokens.success} />
+                          ) : (
+                            <Glyph name="Circle" size={14} color={tokens.foregroundSubtle} />
+                          )}
+                        </View>
+                      );
+                    })}
+                    {answered ? (
+                      <View style={styles.askAnswerRow}>
+                        <Text selectable style={styles.askAnswerKey}>
+                          {typedReply ? "typed" : "answered"}
                         </Text>
-                        {opt.recommended ? (
-                          <Text selectable style={styles.recommendedBadge}>
-                            Recommended
-                          </Text>
-                        ) : null}
+                        <Text selectable style={styles.askAnswerValue}>
+                          {asked.answers.join(", ")}
+                        </Text>
                       </View>
-                      {opt.description ? (
-                        <Text selectable style={styles.askOptionDesc}>
-                          {opt.description}
-                        </Text>
-                      ) : null}
-                    </View>
-                    {isChosen ? (
-                      <Glyph name="CheckCircle" size={16} color={tokens.success} />
-                    ) : (
-                      <Glyph name="Circle" size={14} color={tokens.foregroundSubtle} />
-                    )}
+                    ) : null}
                   </View>
                 );
               })}
-              {answered.length > 0 ? (
-                <View style={styles.askAnswerRow}>
-                  <Text selectable style={styles.askAnswerKey}>
-                    {typedReply ? "typed" : "answered"}
-                  </Text>
-                  <Text selectable style={styles.askAnswerValue}>
-                    {answered.join(", ")}
-                  </Text>
-                </View>
-              ) : null}
             </View>
           )}
 

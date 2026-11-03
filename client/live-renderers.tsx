@@ -43,7 +43,9 @@ import type {
   NoticeCalloutData,
   PaseoToolData,
   GitHubToolData,
+  AskQuestionData,
 } from "../shared/contracts";
+import { applyAnswers, isAskTool, parseAskQuestions } from "./ask-question";
 import { fileKindRpc, revealPathRpc } from "../shared/file-rpc";
 import { buildGitHubData } from "./github-request";
 import { useImageFile } from "./image-file";
@@ -278,93 +280,6 @@ export function buildPaseoData(
   };
 }
 
-interface AskOption {
-  id: string;
-  label: string;
-  description?: string;
-  recommended?: boolean;
-}
-
-/**
- * The ask tool nests its prompt under `questions`, so reading `input.question`
- * finds nothing and the options never reach the callout.
- */
-export function extractAskQuestion(input: Record<string, unknown>): {
-  question: string;
-  options: AskOption[];
-} | null {
-  const raw = Array.isArray(input.questions)
-    ? (input.questions[0] as Record<string, unknown> | undefined)
-    : typeof input.question === "string"
-      ? input
-      : undefined;
-  if (!raw) return null;
-
-  const question = typeof raw.question === "string" ? raw.question : "";
-  const recommended = typeof raw.recommended === "number" ? raw.recommended : undefined;
-  const options = Array.isArray(raw.options)
-    ? raw.options.flatMap((entry, index): AskOption[] => {
-        if (!entry || typeof entry !== "object") return [];
-        const option = entry as Record<string, unknown>;
-        const label = typeof option.label === "string" ? option.label : "";
-        if (!label) return [];
-        return [
-          {
-            id: typeof option.id === "string" ? option.id : `opt-${index}`,
-            label,
-            description: typeof option.description === "string" ? option.description : undefined,
-            recommended: index === recommended,
-          },
-        ];
-      })
-    : [];
-
-  if (!question && options.length === 0) return null;
-  return { question, options };
-}
-
-/**
- * The chosen answer is reported as prose, so the prefix is stripped and the
- * remainder kept verbatim — it may be a typed reply rather than a label.
- */
-export function extractAskAnswer(text?: string): string | undefined {
-  if (!text) return undefined;
-  const trimmed = text.trim();
-  if (!trimmed) return undefined;
-  const match = trimmed.match(/^user\s+(?:selected|answered|chose)\s*:?\s*/i);
-  const answer = match ? trimmed.slice(match[0].length).trim() : trimmed;
-  return answer.length > 0 ? answer : undefined;
-}
-
-/**
- * The selected option labels.
- *
- * The ask result nests its answer, so reading the top level yields the whole
- * JSON object where the choice should be. `details.selectedOptions` is the
- * authoritative list and covers multi-select; the prose line is the fallback
- * for a host that does not report it. A typed reply arrives here too, and
- * matches no option label, which is exactly how free text should behave.
- */
-export function extractAskSelections(output: unknown, outputText?: string): string[] {
-  const container =
-    output && typeof output === "object" ? (output as Record<string, unknown>) : undefined;
-
-  const details = container?.details;
-  if (details && typeof details === "object") {
-    const selected = (details as Record<string, unknown>).selectedOptions;
-    if (Array.isArray(selected)) {
-      const labels = selected.filter(
-        (entry): entry is string => typeof entry === "string" && entry.length > 0,
-      );
-      if (labels.length > 0) return labels;
-    }
-  }
-
-  const prose = container ? extractContentText(container) : outputText;
-  const single = extractAskAnswer(prose);
-  return single ? [single] : [];
-}
-
 /** Extension to the language ids the highlighter and the devicons share. */
 const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   ts: "typescript",
@@ -551,8 +466,7 @@ export function LiveToolCallRenderer({
     let paseo: PaseoToolData | undefined;
     let github: GitHubToolData | undefined;
     let evalCells: EvalCell[] = [];
-    let askOptions: AskOption[] = [];
-    let askAnswer: string[] = [];
+    let askQuestions: AskQuestionData[] = [];
     let title = data.name || "tool";
 
     const isGitHubTool =
@@ -608,12 +522,12 @@ export function LiveToolCallRenderer({
       toolKind = "mcp";
       title = rawName.replace(/^mcp__/, "").replace(/__/g, " / ");
       mcp = buildMcpData(rawName, input, output, durationMs);
-    } else if (rawName === "ask") {
+    } else if (isAskTool(rawName)) {
       toolKind = "ask";
-      const asked = extractAskQuestion(input);
-      title = asked?.question || "User Decision";
-      askOptions = asked?.options ?? [];
-      askAnswer = extractAskSelections(output, outputText);
+      askQuestions = applyAnswers(parseAskQuestions(input), [detail, output], outputText);
+      const first = askQuestions[0];
+      const lead = first?.question || first?.header || "User Decision";
+      title = askQuestions.length > 1 ? `${lead} (+${askQuestions.length - 1} more)` : lead;
     } else if (rawName === "hub") {
       toolKind = "hub";
       title = `Hub: ${String(input.op || "operation")}`;
@@ -660,8 +574,10 @@ export function LiveToolCallRenderer({
       editNewText: !providerDiff && computedEditDiff !== undefined ? editNew : undefined,
       output: toolKind === "github" || evalCells.length > 0 ? undefined : outputText || errorText,
       cells: evalCells.length > 0 ? evalCells : undefined,
-      askOptions: askOptions.length > 0 ? askOptions : undefined,
-      askAnswer: askAnswer.length > 0 ? askAnswer : undefined,
+      askQuestions: askQuestions.length > 0 ? askQuestions : undefined,
+      // The first question, for the code that predates several per call.
+      askOptions: askQuestions[0]?.options.length ? askQuestions[0].options : undefined,
+      askAnswer: askQuestions[0]?.answers.length ? askQuestions[0].answers : undefined,
       exitCode: exitCodeCandidate,
       durationMs,
       hub,

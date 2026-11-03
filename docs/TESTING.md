@@ -87,6 +87,22 @@ Use a project that holds a Markdown file with a heading, a link to another file 
   that line, in the output and in the error output alike. A URL, a version number
   and a `\\host\share` path stay plain text.
 
+## Questions the agent asks
+
+Ask an agent to use its question tool, with one question and then with several
+(in opencode, Claude Code and Codex if available).
+
+- Each question shows its full text, then its options, with the recommended
+  one badged.
+- After you answer, the picked option is ticked and an "answered" line repeats
+  it. A multiple-choice question ticks every pick.
+- Type your own reply instead of picking: the line reads "typed" and no option
+  is ticked.
+- A call with several questions lists all of them, each with its own answer; the
+  title reads "first question (+N more)".
+- Dismiss the prompt without answering: the card says "no answer recorded".
+- While it waits, the card says "Waiting for a decision" and does not fold.
+
 ## Interoperability
 
 - Keep the original Beautiful Chat plugin disabled. Both intercept the

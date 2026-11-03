@@ -386,6 +386,22 @@ export interface GitHubToolData {
   text?: string;
 }
 
+/** One question of an ask call. `answers` is empty until the user replies. */
+export interface AskQuestionData {
+  question: string;
+  header?: string;
+  /** The question allows picking more than one option. */
+  multiple: boolean;
+  options: Array<{
+    id: string;
+    label: string;
+    description?: string;
+    recommended?: boolean;
+  }>;
+  /** Selected option labels, or the typed reply. */
+  answers: string[];
+}
+
 export interface ToolCalloutData {
   id: string;
   tool: ToolCallKind;
@@ -419,6 +435,8 @@ export interface ToolCalloutData {
   }>;
   /** Selected option labels, or the typed reply. Empty until answered. */
   askAnswer?: string[];
+  /** Every question the call asked, each with its own options and answer. */
+  askQuestions?: AskQuestionData[];
   /**
    * One `task` call spawns a batch: the tool takes a shared `context` plus a
    * list of briefs, so the card carries the list. `model` is absent here on
