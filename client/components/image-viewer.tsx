@@ -33,6 +33,11 @@ const MAX_ZOOM = 16;
 const STEP = 1.25;
 /** A press that moved less than this is a click, not the start of a drag. */
 const DRAG_SLOP = 4;
+/** Two taps this close in time and place are a double tap. */
+const DOUBLE_TAP_MS = 300;
+const DOUBLE_TAP_SLOP = 32;
+/** A double tap on a fitted picture zooms to at least this much. */
+const DOUBLE_TAP_ZOOM = 2;
 
 const web = Platform.OS === "web";
 
@@ -44,7 +49,7 @@ const clamp = (value: number, low: number, high: number) => Math.min(high, Math.
  * It opens at its own size, or smaller when the window cannot hold it, and never
  * larger: a 32 px icon is not blown up to the window. The wheel zooms around the
  * pointer, a drag moves the picture, and the buttons do the same without a
- * mouse. Esc, the close button and a press on the backdrop close it.
+ * mouse. A double tap toggles between fit and zoomed in. Esc, the close button and a press on the backdrop close it.
  */
 export function ImageViewer({
   visible,
@@ -61,6 +66,11 @@ export function ImageViewer({
   const drag = useRef<{ x: number; y: number; from: { x: number; y: number }; moved: boolean } | null>(
     null,
   );
+
+  // The last tap that did not move, for telling a double tap.
+  const lastTap = useRef<{ at: number; x: number; y: number } | null>(null);
+  // Set when a second finger touched during this gesture: it is never a tap.
+  const multiTouch = useRef(false);
 
   // Where a two-finger gesture began: how far apart the fingers were, the zoom
   // and offset then, and the point between them.
@@ -146,6 +156,7 @@ export function ImageViewer({
           // A second finger must not hand the gesture to whatever sits behind.
           onResponderTerminationRequest={() => false}
           onResponderGrant={(event) => {
+            multiTouch.current = false;
             drag.current = {
               x: event.nativeEvent.pageX,
               y: event.nativeEvent.pageY,
@@ -168,6 +179,7 @@ export function ImageViewer({
               };
               const start = pinch.current ?? { distance, zoom, middle, offset };
               pinch.current = start;
+              multiTouch.current = true;
               drag.current = null;
               if (start.distance < 1) return;
               const target = clamp(start.zoom * (distance / start.distance), MIN_ZOOM, MAX_ZOOM);
@@ -193,8 +205,31 @@ export function ImageViewer({
             if (start.moved) setOffset({ x: start.from.x + dx, y: start.from.y + dy });
           }}
           onResponderRelease={() => {
+            const tap = drag.current;
             drag.current = null;
             pinch.current = null;
+            if (!tap || tap.moved || multiTouch.current) {
+              lastTap.current = null;
+              return;
+            }
+            const now = Date.now();
+            const before = lastTap.current;
+            if (
+              before &&
+              now - before.at <= DOUBLE_TAP_MS &&
+              Math.hypot(tap.x - before.x, tap.y - before.y) <= DOUBLE_TAP_SLOP
+            ) {
+              lastTap.current = null;
+              // Zoomed in or out of fit: back to fit. At fit: in, around the tap.
+              if (Math.abs(zoom - 1) > 0.01) zoomTo(1);
+              else
+                zoomTo(Math.max(DOUBLE_TAP_ZOOM, 1 / fit), {
+                  x: tap.x - window.width / 2,
+                  y: tap.y - window.height / 2,
+                });
+              return;
+            }
+            lastTap.current = { at: now, x: tap.x, y: tap.y };
           }}
         >
           <Image

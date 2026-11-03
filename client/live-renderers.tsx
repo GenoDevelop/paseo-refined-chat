@@ -577,7 +577,7 @@ export function LiveToolCallRenderer({
         : "GitHub";
     } else if (isGitCommand) {
       toolKind = "git";
-      title = command ? `$ ${command.trim()}` : "Git command";
+      title = command ? `$ ${command.trim().replace(/\s+/g, " ")}` : "Git command";
     } else if (rawName === "read" || detailType === "read") {
       toolKind = "read";
       title = filePath ? filePath.split(/[/\\]/).pop() || filePath : "Read file";
@@ -589,7 +589,7 @@ export function LiveToolCallRenderer({
       title = filePath ? filePath.split(/[/\\]/).pop() || filePath : "Edit file";
     } else if (classifyShellTool(rawName, detailType)) {
       toolKind = classifyShellTool(rawName, detailType) ?? "bash";
-      title = command ? `$ ${command.trim()}` : "Execute command";
+      title = command ? `$ ${command.trim().replace(/\s+/g, " ")}` : "Execute command";
     } else if (rawName === "thinking") {
       toolKind = "thinking";
       title = "Reasoning Process";

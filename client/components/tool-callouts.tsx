@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { saveCardState, savedCardState } from "../card-state";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import type { TextStyle, ViewStyle } from "react-native";
 import { Glyph } from "./glyph";
 import { frosted } from "./frosted";
@@ -636,7 +636,15 @@ export function ToolCallout({
               )}
             </Breathe>
           ) : null}
-          <Text selectable style={styles.titleText} numberOfLines={1} ellipsizeMode="tail">
+          {/* On Android a selectable Text ignores `numberOfLines`: a long command
+              wrapped and the row cut off its second line. Web selects through
+              the surface style, so only native gives up selecting the title. */}
+          <Text
+            selectable={Platform.OS === "web"}
+            style={styles.titleText}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {data.title}
           </Text>
         </View>
