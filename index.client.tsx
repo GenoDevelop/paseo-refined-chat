@@ -10,7 +10,7 @@ import { installHostNoticeStyle } from "./client/components/host-notice";
 import { installChatFind } from "./client/components/chat-find";
 import { installLinkStyle } from "./client/components/markdown/link-style";
 import { extractPromptImages } from "./client/prompt-images";
-import { getEnhancerPreferences } from "./client/preferences";
+import { attachRemotePreferences, getEnhancerPreferences } from "./client/preferences";
 import { yieldsToHost } from "./client/host-chat-display";
 import {
   isCardHidden,
@@ -41,6 +41,8 @@ function toJsonValue(value: unknown): JsonValue {
 }
 
 export default function contribute(client: PluginClientContext) {
+  // Android has no browser storage: its settings live on the daemon.
+  const removeRemotePreferences = attachRemotePreferences(client.rpc);
   // Install the bundled faces before any surface paints.
   const removeFonts = embedFonts();
   const removeFrost = installFrostedGlass();
@@ -320,6 +322,7 @@ export default function contribute(client: PluginClientContext) {
 
   return () => {
     registerPanelOpener(null);
+    removeRemotePreferences();
     removeFilePanel();
     removeFonts();
     removeFrost();

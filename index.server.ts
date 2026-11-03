@@ -13,6 +13,7 @@ import {
 } from "./shared/file-rpc";
 import { type HighlightLine, type HighlightToken, highlightRpc } from "./shared/highlight-rpc";
 import { MAX_IMAGE_BYTES, imageRpc } from "./shared/image-rpc";
+import { preferencesSettings } from "./shared/preferences-settings";
 
 /**
  * Image types worth inlining, and the mime each one needs in its data URI.
@@ -461,6 +462,13 @@ function isNetworkPath(target: string): boolean {
 }
 
 export default function contribute(server: PluginServerContext) {
+  // Where a client with no browser storage keeps its preferences. A daemon
+  // that cannot hold them must not take the file preview down with it.
+  try {
+    server.registerSettings(preferencesSettings);
+  } catch {
+    // The client keeps its preferences in memory then.
+  }
   server.handle(revealPathRpc, async (input) => {
     const requested = stripSelector(input.path);
     if (!requested) return { revealed: null, error: "No path" };

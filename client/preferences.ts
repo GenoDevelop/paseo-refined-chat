@@ -1,4 +1,7 @@
 import { useSyncExternalStore } from "react";
+import { Platform } from "react-native";
+import type { PluginClientContext } from "@getpaseo/plugin/client";
+import { preferencesRpc } from "../shared/preferences-settings";
 import { COLLAPSE_KINDS, sanitizeCollapseKinds } from "./tool-collapse";
 import type { CollapseKind } from "./tool-collapse";
 
@@ -300,7 +303,14 @@ export function sanitizeFontFamily(value: unknown): string {
 
 function loadPreferences(): EnhancerPreferences {
   try {
-    const stored = storage()?.getItem(STORAGE_KEY);
+    return parsePreferences(storage()?.getItem(STORAGE_KEY));
+  } catch {
+    return { ...DEFAULT_PREFERENCES };
+  }
+}
+
+function parsePreferences(stored: string | null | undefined): EnhancerPreferences {
+  try {
     if (!stored) return { ...DEFAULT_PREFERENCES };
     const candidate = JSON.parse(stored) as Partial<EnhancerPreferences>;
     return {
@@ -404,6 +414,8 @@ export function updateEnhancerPreferences(update: Partial<EnhancerPreferences>):
   } catch {
     // Browser storage can be disabled. Keep the change alive for this session.
   }
+  changedHere = true;
+  scheduleRemoteSave();
   publish();
 }
 
@@ -414,7 +426,91 @@ export function resetEnhancerPreferences(): void {
   } catch {
     // Keep the default session value if storage is unavailable.
   }
+  changedHere = true;
+  scheduleRemoteSave();
   publish();
+}
+
+// A client with no browser storage (Android) keeps its preferences on the
+// daemon, in a profile of its own. Without a daemon they live in memory only.
+type Rpc = PluginClientContext["rpc"];
+const SAVE_DELAY_MS = 600;
+let remote: { rpc: Rpc; key: string } | null = null;
+let remoteRevision = "";
+let remoteProfiles: Record<string, string> = {};
+let remoteTimer: ReturnType<typeof setTimeout> | undefined;
+/** Set once the reader changed something: what the daemon holds no longer wins. */
+let changedHere = false;
+
+/** Names this device: the platform and model, so a phone and a computer differ. */
+function deviceKey(): string {
+  const constants = (Platform as unknown as { constants?: Record<string, unknown> }).constants ?? {};
+  const part = (value: unknown) => (typeof value === "string" && value ? value : "unknown");
+  return [Platform.OS, part(constants.Brand), part(constants.Model)].join(":");
+}
+
+async function readRemote(rpc: Rpc): Promise<boolean> {
+  const result = await rpc(preferencesRpc.read, {});
+  if (result.status !== "ready") return false;
+  remoteRevision = result.revision;
+  const values = result.values as { profiles?: Record<string, string> } | null;
+  remoteProfiles = { ...(values?.profiles ?? {}) };
+  return true;
+}
+
+async function saveRemote(): Promise<void> {
+  if (!remote) return;
+  const { rpc, key } = remote;
+  const profiles = { ...remoteProfiles };
+  if (JSON.stringify(preferences) === JSON.stringify(DEFAULT_PREFERENCES)) delete profiles[key];
+  else profiles[key] = JSON.stringify(preferences);
+  const result = await rpc(preferencesRpc.write, { revision: remoteRevision, values: { profiles } });
+  if (result.status === "saved") {
+    remoteRevision = result.revision;
+    remoteProfiles = profiles;
+    return;
+  }
+  // Another device saved first: take its profiles, keep this device's own.
+  if (result.status === "conflict" && (await readRemote(rpc))) await saveRemote();
+}
+
+function scheduleRemoteSave(): void {
+  if (!remote) return;
+  clearTimeout(remoteTimer);
+  remoteTimer = setTimeout(() => {
+    saveRemote().catch(() => {
+      // The daemon may be gone; the change stays in memory for this session.
+    });
+  }, SAVE_DELAY_MS);
+}
+
+/**
+ * Loads this device's profile from the daemon and keeps saving to it. Does
+ * nothing where the browser keeps the preferences itself. Returns what undoes it.
+ */
+export function attachRemotePreferences(rpc: Rpc): () => void {
+  if (storage()) return () => {};
+  const key = deviceKey();
+  remote = { rpc, key };
+  readRemote(rpc)
+    .then((ready) => {
+      if (!ready || !remote) return;
+      const stored = remoteProfiles[key];
+      // A change made before the daemon answered is newer than what it holds.
+      if (stored && !changedHere) {
+        preferences = parsePreferences(stored);
+        publish();
+      } else if (changedHere) {
+        scheduleRemoteSave();
+      }
+    })
+    .catch(() => {
+      // Older daemons have no settings store; preferences stay in memory.
+    });
+  return () => {
+    clearTimeout(remoteTimer);
+    remote = null;
+  };
 }
 
 export function useEnhancerPreferences(): EnhancerPreferences {
