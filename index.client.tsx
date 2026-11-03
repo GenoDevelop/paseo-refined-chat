@@ -64,6 +64,60 @@ export default function contribute(client: PluginClientContext) {
     Component: BeautifulChatSettingsPage,
   });
 
+  // Ways to reach the settings page above without going through Paseo's Settings.
+  const removeSettingsCommand = client.addSlashCommand({
+    name: "refined",
+    description: "Open the Refined Chat settings",
+    argumentHint: "",
+    context: "workspace",
+    onSubmit({ openSettings }) {
+      openSettings("chat-presentation");
+    },
+  });
+  const removeSettingsCenterItem = client.addCommandCenterItem({
+    id: "open-chat-presentation-settings",
+    title: "Refined Chat settings",
+    icon: "Blocks",
+    keywords: ["refined", "chat", "presentation", "settings", "appearance"],
+    context: "global",
+    onSelect({ openSettings }) {
+      openSettings("chat-presentation");
+    },
+  });
+
+  // A header button needs a workspace, so one is added for each workspace the
+  // daemon lists and for each that appears later. A workspace that goes away
+  // leaves a button nobody can reach, which costs nothing.
+  const settingsButtons = new Map<string, { remove(): void }>();
+  const addSettingsButton = (workspaceId: string) => {
+    if (settingsButtons.has(workspaceId)) return;
+    settingsButtons.set(
+      workspaceId,
+      client.addHeaderButton({
+        id: "open-chat-presentation-settings",
+        workspaceId,
+        button: {
+          title: "Refined Chat settings",
+          icon: "Blocks",
+          behavior: { kind: "action", onPress: () => client.openSettings("chat-presentation") },
+        },
+      }),
+    );
+  };
+  let settingsButtonsStopped = false;
+  const stopWorkspaceUpdates = client.paseo.workspaces.subscribe((update) => {
+    if (update.kind === "upsert") addSettingsButton(update.workspace.id);
+  });
+  client.paseo.workspaces
+    .list({ subscribe: {} })
+    .then((result) => {
+      if (settingsButtonsStopped) return;
+      for (const entry of result.entries) addSettingsButton(entry.id);
+    })
+    .catch(() => {
+      // Without the list there is no button; the command and the Command Center item remain.
+    });
+
   const removeFilePanel = client.addWorkspacePanel({
     id: FILE_PREVIEW_PANEL_ID,
     title: "File preview",
@@ -323,6 +377,12 @@ export default function contribute(client: PluginClientContext) {
   return () => {
     registerPanelOpener(null);
     removeRemotePreferences();
+    removeSettingsCommand();
+    removeSettingsCenterItem();
+    settingsButtonsStopped = true;
+    stopWorkspaceUpdates();
+    for (const button of settingsButtons.values()) button.remove();
+    settingsButtons.clear();
     removeFilePanel();
     removeFonts();
     removeFrost();

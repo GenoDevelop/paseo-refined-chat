@@ -891,6 +891,9 @@ function Section({
         {
           borderColor: tokens.borderSubtle,
           backgroundColor: tokens.surfaceGlass,
+          // The accent edge and tinted header set each group apart from the next.
+          borderLeftWidth: 3,
+          borderLeftColor: tokens.accent,
         },
       ]}
     >
@@ -899,13 +902,13 @@ function Section({
         accessibilityState={{ expanded: open }}
         accessibilityLabel={`${title}, ${open ? "collapse" : "expand"}`}
         onPress={toggle}
-        style={styles.sectionHeader}
+        style={[styles.sectionHeader, { backgroundColor: tokens.accentBg }]}
       >
         <View style={styles.sectionText}>
           <Text
             style={[
               styles.sectionTitle,
-              { color: tokens.foreground, fontFamily: tokens.fontUi },
+              { color: tokens.accent, fontFamily: tokens.fontUi },
             ]}
           >
             {title}
@@ -922,7 +925,7 @@ function Section({
         <Glyph
           name={open ? "ChevronUp" : "ChevronDown"}
           size={16}
-          color={tokens.foregroundMuted}
+          color={tokens.accent}
         />
       </Pressable>
       {open ? children : null}
