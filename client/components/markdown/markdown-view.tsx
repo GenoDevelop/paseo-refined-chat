@@ -881,6 +881,13 @@ function MarkdownLink({
 }) {
   const openFile = useContext(FileLinkContext);
   const link = openFile ? parseFileLink(href) : null;
+  const reveal = useContext(RevealPathContext);
+  const { pathOpens } = useEnhancerPreferences();
+  let path = href;
+  try { path = decodeURIComponent(path); } catch { /* Keep malformed escapes literal. */ }
+  // Markdown absolute Windows targets can carry a leading slash.
+  path = path.replace(/^\/([a-zA-Z]:[\\/])/, "$1");
+  const kind = reveal ? pathKind(path) : null;
   // `onPress` on a Text, not a Pressable wrapper: a link sits mid
   // sentence, and a View there would break the line box and drop the
   // text out of the paragraph's selection range.
@@ -891,14 +898,16 @@ function MarkdownLink({
       // No `href`: React Native Web would render a real anchor and the
       // click would navigate the app window itself. The press handler
       // routes through the host's opener instead.
-      onPress={() => (link !== null ? openFile?.(href) : openLink(href))}
+      onPress={() => (link !== null ? openFile?.(href) : kind ? reveal?.(path, kind) : openLink(href))}
       style={styles.link}
       {...(link !== null
         ? // A link to a place in the same file has no file to name, so no icon.
           link.path === null
           ? plainLinkProps()
           : pathLinkProps("file", true)
-        : Platform.OS === "web"
+        : kind
+          ? pathLinkProps(kind, pathOpens === "panel")
+          : Platform.OS === "web"
           ? linkProps(href, inlineText(spans))
           : null)}
     >
