@@ -41,7 +41,9 @@ No GitHub Actions minutes are consumed.
   later fails. Those kinds appear dimmed and locked under "Collapse when
   finished". When every kind starts collapsed, "Only fold longer cards" dims.
 - A manual expand or collapse must not be overridden.
-- Failed calls and Ask/question cards stay open unless start-collapsed.
+- Failed calls stay open unless start-collapsed. Questions (ask) can be selected
+  independently for start-collapsed and collapse-on-finish; unanswered questions
+  stay open on finish. Check a Codex async question folds when its answers arrive.
 - A failed edit or write shows no `+X -Y` count, and a failed edit labels its
   diff "Not applied".
 - Verify the **Collapse** action at the bottom of an expanded long card.
@@ -87,6 +89,32 @@ Use a project that holds a Markdown file with a heading, a link to another file 
   that line, in the output and in the error output alike. A URL, a version number
   and a `\\host\share` path stay plain text.
 
+## Questions the agent asks
+
+Ask an agent to use its question tool, with one question and then with several
+(in opencode, Claude Code and Codex if available).
+
+- Each question shows its full text, then its options, with the recommended
+  one badged.
+- After you answer, the picked option is ticked and an "answered" line repeats
+  it. A multiple-choice question ticks every pick.
+- Type your own reply instead of picking: the line reads "typed" and no option
+  is ticked.
+- A call with several questions lists all of them, each with its own answer; the
+  title reads "first question (+N more)".
+- Dismiss the prompt without answering: the card says "no answer recorded".
+- While it waits, the card stays open unless Questions (ask) is selected under
+  Cards that start collapsed.
+- In Codex, answer an async question with an option containing a comma. All
+  options remain separate and the selected one is ticked. Reload the plugin:
+  captured options and the selected answer should survive through daemon storage.
+- Codex questions without archived definitions retain their readable text fallback.
+- A Codex answer's duplicate user message disappears without a gap, including
+  when its question card belongs to an automatically collapsed run. A message
+  with different or additional text remains visible.
+- With both Questions (ask) collapse settings off, an answered card remains open.
+  Enable collapse-on-finish: it folds after all answers arrive, unless touched.
+
 ## Interoperability
 
 - Keep the original Beautiful Chat plugin disabled. Both intercept the
@@ -95,6 +123,8 @@ Use a project that holds a Markdown file with a heading, a link to another file 
 
 ## Current verification status
 
-There is no automated test suite. `npm run typecheck` must pass, and each
-change is checked by hand in a running Paseo (`paseo plugin reload`) on a dark
+Run the focused parser, archive and collapse tests with
+`node tests/ask-question.test.cjs`, `node tests/question-archive.test.cjs` and
+`node tests/tool-collapse.test.cjs`. `npm run typecheck` must also pass.
+Check UI changes by hand in a running Paseo (`paseo plugin reload`) on a dark
 and a light theme. Each PR states what was and was not exercised.

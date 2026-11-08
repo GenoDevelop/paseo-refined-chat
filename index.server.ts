@@ -14,6 +14,7 @@ import {
 import { type HighlightLine, type HighlightToken, highlightRpc } from "./shared/highlight-rpc";
 import { MAX_IMAGE_BYTES, imageRpc } from "./shared/image-rpc";
 import { preferencesSettings } from "./shared/preferences-settings";
+import { questionSettings } from "./shared/question-settings";
 
 /**
  * Image types worth inlining, and the mime each one needs in its data URI.
@@ -466,6 +467,7 @@ export default function contribute(server: PluginServerContext) {
   // that cannot hold them must not take the file preview down with it.
   try {
     server.registerSettings(preferencesSettings);
+    server.registerSettings(questionSettings);
   } catch {
     // The client keeps its preferences in memory then.
   }

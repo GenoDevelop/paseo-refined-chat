@@ -121,8 +121,8 @@ Nothing folds on its own until you pick something here.
 | Cards to collapse when finished | Kinds that fold back up once they finish. A thinking stream stays open while it streams. A kind that already starts collapsed is dimmed here. |
 | Only fold longer cards | Keeps a card open while its output, code and diff add up to fewer lines than the limit. Dimmed when no kind is left to fold. |
 
-The kinds are Shell and Git, Writes, Edits, Reads, Other tools and Thinking. A card you open or close
-yourself keeps its state, and an ask card never folds. Expanded cards have a **Collapse** control at the
+The kinds are Shell and Git, Writes, Edits, Reads, Questions (ask), Other tools and Thinking. Questions
+fold on finish only after all answers are recorded. A card you open or close yourself keeps its state. Expanded cards have a **Collapse** control at the
 bottom, so you do not scroll back to the header.
 
 ![Folding: a read folded after it finished, a written file cut off after 30 lines, and command output with its middle folded](docs/images/folding.png)

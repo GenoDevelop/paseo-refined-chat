@@ -271,7 +271,8 @@ function loadAutoCollapseKinds(
   if (Array.isArray(candidate.autoCollapseKinds)) {
     return sanitizeCollapseKinds(candidate.autoCollapseKinds, []);
   }
-  return candidate.autoCollapseTools === true ? [...COLLAPSE_KINDS] : [];
+  // Questions were excluded from folding before they became a selectable kind.
+  return candidate.autoCollapseTools === true ? COLLAPSE_KINDS.filter(kind => kind !== "ask") : [];
 }
 
 /**
@@ -286,7 +287,7 @@ function loadStartCollapsedKinds(
   }
   const legacy: CollapseKind[] = [];
   if (candidate.openWhileRunning === false) {
-    legacy.push(...COLLAPSE_KINDS.filter((kind) => kind !== "thinking"));
+    legacy.push(...COLLAPSE_KINDS.filter((kind) => kind !== "thinking" && kind !== "ask"));
   }
   if (candidate.collapseThinking === true) legacy.push("thinking");
   return legacy;

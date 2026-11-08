@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { collapseKind } from "./tool-collapse";
+import { collapseKind, startsExpanded } from "./tool-collapse";
 import { View } from "react-native";
 import { useAgent, usePaseo, useRpc } from "@getpaseo/plugin/client";
 import { useRevealedText } from "@getpaseo/plugin/client/react-native";
@@ -43,7 +43,10 @@ import type {
   NoticeCalloutData,
   PaseoToolData,
   GitHubToolData,
+  AskQuestionData,
 } from "../shared/contracts";
+import { applyAnswers, askTranscript, isAskTool, parseAskQuestions } from "./ask-question";
+import { noteCodexAskReply, useCodexAsk, useIsCodexAskReply } from "./codex-ask";
 import { fileKindRpc, revealPathRpc } from "../shared/file-rpc";
 import { buildGitHubData } from "./github-request";
 import { useImageFile } from "./image-file";
@@ -278,93 +281,6 @@ export function buildPaseoData(
   };
 }
 
-interface AskOption {
-  id: string;
-  label: string;
-  description?: string;
-  recommended?: boolean;
-}
-
-/**
- * The ask tool nests its prompt under `questions`, so reading `input.question`
- * finds nothing and the options never reach the callout.
- */
-export function extractAskQuestion(input: Record<string, unknown>): {
-  question: string;
-  options: AskOption[];
-} | null {
-  const raw = Array.isArray(input.questions)
-    ? (input.questions[0] as Record<string, unknown> | undefined)
-    : typeof input.question === "string"
-      ? input
-      : undefined;
-  if (!raw) return null;
-
-  const question = typeof raw.question === "string" ? raw.question : "";
-  const recommended = typeof raw.recommended === "number" ? raw.recommended : undefined;
-  const options = Array.isArray(raw.options)
-    ? raw.options.flatMap((entry, index): AskOption[] => {
-        if (!entry || typeof entry !== "object") return [];
-        const option = entry as Record<string, unknown>;
-        const label = typeof option.label === "string" ? option.label : "";
-        if (!label) return [];
-        return [
-          {
-            id: typeof option.id === "string" ? option.id : `opt-${index}`,
-            label,
-            description: typeof option.description === "string" ? option.description : undefined,
-            recommended: index === recommended,
-          },
-        ];
-      })
-    : [];
-
-  if (!question && options.length === 0) return null;
-  return { question, options };
-}
-
-/**
- * The chosen answer is reported as prose, so the prefix is stripped and the
- * remainder kept verbatim — it may be a typed reply rather than a label.
- */
-export function extractAskAnswer(text?: string): string | undefined {
-  if (!text) return undefined;
-  const trimmed = text.trim();
-  if (!trimmed) return undefined;
-  const match = trimmed.match(/^user\s+(?:selected|answered|chose)\s*:?\s*/i);
-  const answer = match ? trimmed.slice(match[0].length).trim() : trimmed;
-  return answer.length > 0 ? answer : undefined;
-}
-
-/**
- * The selected option labels.
- *
- * The ask result nests its answer, so reading the top level yields the whole
- * JSON object where the choice should be. `details.selectedOptions` is the
- * authoritative list and covers multi-select; the prose line is the fallback
- * for a host that does not report it. A typed reply arrives here too, and
- * matches no option label, which is exactly how free text should behave.
- */
-export function extractAskSelections(output: unknown, outputText?: string): string[] {
-  const container =
-    output && typeof output === "object" ? (output as Record<string, unknown>) : undefined;
-
-  const details = container?.details;
-  if (details && typeof details === "object") {
-    const selected = (details as Record<string, unknown>).selectedOptions;
-    if (Array.isArray(selected)) {
-      const labels = selected.filter(
-        (entry): entry is string => typeof entry === "string" && entry.length > 0,
-      );
-      if (labels.length > 0) return labels;
-    }
-  }
-
-  const prose = container ? extractContentText(container) : outputText;
-  const single = extractAskAnswer(prose);
-  return single ? [single] : [];
-}
-
 /** Extension to the language ids the highlighter and the devicons share. */
 const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   ts: "typescript",
@@ -463,6 +379,13 @@ export function LiveToolCallRenderer({
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
   const data = item.data;
+  const codexAsk = useCodexAsk(
+    agentId,
+    data.callId,
+    timestamp.getTime(),
+    data.name.toLowerCase() === "request_user_input_async" && data.detail?.type === "plain_text"
+      && typeof data.detail.text === "string" ? data.detail.text : undefined,
+  );
   const runKey = `tool:${data.callId ?? data.name}:${timestamp.getTime()}`;
 
   const calloutData = useMemo((): ToolCalloutData => {
@@ -551,8 +474,7 @@ export function LiveToolCallRenderer({
     let paseo: PaseoToolData | undefined;
     let github: GitHubToolData | undefined;
     let evalCells: EvalCell[] = [];
-    let askOptions: AskOption[] = [];
-    let askAnswer: string[] = [];
+    let askQuestions: AskQuestionData[] = [];
     let title = data.name || "tool";
 
     const isGitHubTool =
@@ -608,12 +530,13 @@ export function LiveToolCallRenderer({
       toolKind = "mcp";
       title = rawName.replace(/^mcp__/, "").replace(/__/g, " / ");
       mcp = buildMcpData(rawName, input, output, durationMs);
-    } else if (rawName === "ask") {
+    } else if (isAskTool(rawName)) {
       toolKind = "ask";
-      const asked = extractAskQuestion(input);
-      title = asked?.question || "User Decision";
-      askOptions = asked?.options ?? [];
-      askAnswer = extractAskSelections(output, outputText);
+      askQuestions = applyAnswers(parseAskQuestions(input), [detail, output], outputText);
+      if (!askQuestions.length && codexAsk.questions.length) askQuestions = codexAsk.questions;
+      const first = askQuestions[0];
+      const lead = first?.question || first?.header || "User Decision";
+      title = askQuestions.length > 1 ? `${lead} (+${askQuestions.length - 1} more)` : lead;
     } else if (rawName === "hub") {
       toolKind = "hub";
       title = `Hub: ${String(input.op || "operation")}`;
@@ -658,10 +581,14 @@ export function LiveToolCallRenderer({
       diff,
       diffComputed: !providerDiff && computedEditDiff !== undefined ? true : undefined,
       editNewText: !providerDiff && computedEditDiff !== undefined ? editNew : undefined,
-      output: toolKind === "github" || evalCells.length > 0 ? undefined : outputText || errorText,
+      output: toolKind === "github" || evalCells.length > 0 ? undefined :
+        (toolKind === "ask" ? codexAsk.transcript || askTranscript(detail, outputText) : outputText) || errorText,
       cells: evalCells.length > 0 ? evalCells : undefined,
-      askOptions: askOptions.length > 0 ? askOptions : undefined,
-      askAnswer: askAnswer.length > 0 ? askAnswer : undefined,
+      askQuestions: askQuestions.length > 0 ? askQuestions : undefined,
+      askTranscript: askQuestions.length === 0 ? codexAsk.transcript : undefined,
+      // The first question, for the code that predates several per call.
+      askOptions: askQuestions[0]?.options.length ? askQuestions[0].options : undefined,
+      askAnswer: askQuestions[0]?.answers.length ? askQuestions[0].answers : undefined,
       exitCode: exitCodeCandidate,
       durationMs,
       hub,
@@ -670,7 +597,7 @@ export function LiveToolCallRenderer({
       paseo,
       github,
     };
-  }, [data]);
+  }, [data, codexAsk.questions, codexAsk.transcript]);
 
   // The dock has no access to the job manager, so the timeline is its only
   // source: every job snapshot that passes through a card is republished, and
@@ -685,14 +612,7 @@ export function LiveToolCallRenderer({
     });
   }, [hubData, agentId]);
 
-  // Collapse completed tools by default; expand active or failed tools. A kind
-  // the reader chose to start folded stays folded while it runs and when it
-  // fails: they asked for it closed. An ask card holds a question, so it never
-  // starts folded.
-  const startsFolded =
-    calloutData.tool !== "ask" &&
-    preferences.startCollapsedKinds.includes(collapseKind(calloutData.tool));
-  const isExpanded = (data.status === "failed" || data.status === "running") && !startsFolded;
+  const isExpanded = startsExpanded(calloutData, preferences.startCollapsedKinds);
 
   useRunMember(
     agentId,
@@ -703,7 +623,7 @@ export function LiveToolCallRenderer({
       kind: collapseKind(calloutData.tool),
       status: calloutData.status === "completed" ? "done" : calloutData.status,
     },
-    preferences.cardRunBar,
+    preferences.cardRunBar && !codexAsk.hidden,
   );
   // A card still going stays drawn under the bar of its closed run.
   const runClosed =
@@ -734,6 +654,8 @@ export function LiveToolCallRenderer({
     calloutData.tool === "read" || calloutData.tool === "write" ? calloutData.filePath : undefined,
     cwd,
   );
+
+  if (codexAsk.hidden) return null;
 
   if (runClosed) {
     return (
@@ -1094,6 +1016,11 @@ export function LiveUserMessageRenderer({
   timestamp,
 }: PluginTimelineItemProps<LiveUserMessagePayload>) {
   const preferences = useEnhancerPreferences();
+  const matchesAsk = useIsCodexAskReply(agentId, item.data.text);
+  const hiddenAskReply = matchesAsk && !item.data.images?.length;
+  useEffect(() => {
+    if (hiddenAskReply) noteCodexAskReply(agentId, item.data.messageId, item.data.text);
+  }, [hiddenAskReply, agentId, item.data.messageId, item.data.text]);
   const tokens = useMemo(
     () => buildThemeTokens(theme.colors, preferences),
     [theme.colors, preferences],
@@ -1107,7 +1034,7 @@ export function LiveUserMessageRenderer({
     undefined,
     timestamp.getTime(),
     undefined,
-    preferences.cardRunBar,
+    preferences.cardRunBar && !hiddenAskReply,
   );
   const paseo = usePaseo();
   const handle = useMemo(() => paseo.agents.ref(agentId), [paseo, agentId]);
@@ -1149,6 +1076,8 @@ export function LiveUserMessageRenderer({
   // replay. A job result is not something the user said, so it never takes the
   // user bubble.
   const envelope = useMemo(() => parseSystemEnvelope(item.data.text), [item.data.text]);
+
+  if (hiddenAskReply) return null;
 
   return (
     <View {...surfaceProps(runRowProps(runItemKey("user", item.data.text, timestamp.getTime())), promptRowAnchor(item.data.messageId))}>

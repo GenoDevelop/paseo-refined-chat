@@ -362,10 +362,11 @@ const PHRASES: Record<CollapseKind, [one: string, many: string]> = {
   read: ["read 1 file", "read # files"],
   edit: ["edited 1 file", "edited # files"],
   write: ["wrote 1 file", "wrote # files"],
+  ask: ["1 question card", "# question cards"],
   other: ["used 1 other tool", "used # other tools"],
   thinking: ["1 thought", "# thoughts"],
 };
-const PHRASE_ORDER: CollapseKind[] = ["shell", "read", "edit", "write", "other", "thinking"];
+const PHRASE_ORDER: CollapseKind[] = ["shell", "read", "edit", "write", "ask", "other", "thinking"];
 
 /** "Ran 3 commands, read 2 files, 1 thought": what the cards of a run did. */
 export function describeKinds(counts: KindCounts, total: number): string {

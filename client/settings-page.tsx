@@ -1258,7 +1258,7 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
 
         <MultiChoiceRow<CollapseKind>
           title="Cards to collapse when finished"
-          description="Cards that fold back up once they finish; none selected turns folding off. A failed call and an ask card stay open, and a card you opened or closed yourself keeps its state. Thinking stays open while it streams, then folds."
+          description="Cards that fold back up once they finish; none selected turns folding off. Questions fold after all answers are recorded. Failed calls stay open, and a card you opened or closed yourself keeps its state. Thinking stays open while it streams, then folds."
           value={preferences.autoCollapseKinds}
           options={COLLAPSE_KINDS.map((kind) => ({
             value: kind,
