@@ -649,14 +649,14 @@ export function ToolCallout({
           {/* On Android a selectable Text ignores `numberOfLines`: a long command
               wrapped and the row cut off its second line. Web selects through
               the surface style, so only native gives up selecting the title. */}
-          <Text
+          {!(data.tool === "ask" && expanded) && <Text
             selectable={Platform.OS === "web"}
             style={styles.titleText}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
             {data.title}
-          </Text>
+          </Text>}
         </View>
 
         <View style={styles.headerRight}>
