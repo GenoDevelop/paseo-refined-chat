@@ -10,7 +10,46 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const loaded = { exports: {} };
 new Function("exports", "require", "module", compiled)(loaded.exports, require, loaded);
-const { isAskTool, parseAskQuestions, applyAnswers, askTranscript, pairAskTranscripts, isAskReply, answerCodexQuestions } = loaded.exports;
+const { isAskTool, parseAskQuestions, applyAnswers, askTranscript, pairAskTranscripts, isAskReply, answerCodexQuestions, parseCodexQuestionMetadata } = loaded.exports;
+
+test("Synchronous Codex reads options and descriptions from metadata and matches answers by ID", () => {
+  const metadata = {
+    questions: [
+      { id: "context", header: "Context", question: "Which context?", options: [
+        { label: "Use context (Recommended)", description: "Keep the source collection." },
+        { label: "Hide", description: "Hide the strip." },
+      ] },
+      { id: "breadcrumbs", header: "Breadcrumbs", question: "Which path?", options: [
+        { label: "Category, collection", description: "A label containing a comma." },
+        { label: "Main category" },
+      ] },
+    ],
+    // Insertion order differs from the questions; unrelated keys are ignored.
+    answers: { unrelated: ["Ignored"], breadcrumbs: ["Category, collection"], context: ["Hide"] },
+  };
+  const parsed = parseCodexQuestionMetadata(metadata);
+  assert.deepEqual(parsed.map(q => q.answers), [["Hide"], ["Category, collection"]]);
+  assert.deepEqual(parsed.map(q => q.header), ["Context", "Breadcrumbs"]);
+  assert.equal(parsed[0].options[0].description, "Keep the source collection.");
+  assert.equal(parsed[0].options.length, 2);
+  assert.equal(parsed[1].options[0].label, "Category, collection");
+});
+
+test("Synchronous Codex retains unanswered questions and typed or multiple recorded answers", () => {
+  const questions = [
+    { id: "a", question: "First?", options: [{ label: "A" }, { label: "B" }], multiSelect: true },
+    { id: "b", question: "Second?" },
+    { id: "c", question: "Third?" },
+  ];
+  assert.deepEqual(parseCodexQuestionMetadata({ questions }).map(q => q.answers), [[], [], []]);
+  const parsed = parseCodexQuestionMetadata({ questions, answers: { a: ["A", "B"], b: ["Typed\nreply"], c: null } });
+  assert.equal(parsed[0].multiple, true);
+  assert.deepEqual(parsed.map(q => q.answers), [["A", "B"], ["Typed\nreply"], []]);
+  assert.deepEqual(parseCodexQuestionMetadata({ questions: [null, {}, ...questions], answers: { a: [null, "", "A"] } })
+    .map(q => q.answers), [["A"], [], []]);
+  assert.deepEqual(parseCodexQuestionMetadata(null), []);
+  assert.deepEqual(parseCodexQuestionMetadata({ questions: "invalid" }), []);
+});
 
 test("Captured Codex options survive answers, including commas and multiline free text", () => {
   const questions = parseAskQuestions({ questions: [

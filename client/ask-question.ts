@@ -127,6 +127,23 @@ export function parseAskQuestions(input: Record<string, unknown>): AskQuestionDa
   });
 }
 
+/** Synchronous Codex calls retain questions and ID-keyed answers in timeline metadata. */
+export function parseCodexQuestionMetadata(value: unknown): AskQuestionData[] {
+  const metadata = object(value);
+  if (!metadata || !Array.isArray(metadata.questions)) return [];
+  const answers = object(metadata.answers);
+  return metadata.questions.flatMap(entry => {
+    const raw = object(entry);
+    if (!raw) return [];
+    const question = parseAskQuestions({ questions: [raw] })[0];
+    if (!question) return [];
+    const recorded = typeof raw.id === "string" ? answers?.[raw.id] : undefined;
+    return [{ ...question, answers: Array.isArray(recorded)
+      ? recorded.filter((answer): answer is string => typeof answer === "string" && answer.length > 0)
+      : [] }];
+  });
+}
+
 const unescape = (value: string) => value.replace(/\\(["\\])/g, "$1");
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 

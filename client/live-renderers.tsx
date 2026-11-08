@@ -45,7 +45,7 @@ import type {
   GitHubToolData,
   AskQuestionData,
 } from "../shared/contracts";
-import { applyAnswers, askTranscript, isAskTool, parseAskQuestions } from "./ask-question";
+import { applyAnswers, askTranscript, isAskTool, parseAskQuestions, parseCodexQuestionMetadata } from "./ask-question";
 import { noteCodexAskReply, useCodexAsk, useIsCodexAskReply } from "./codex-ask";
 import { fileKindRpc, revealPathRpc } from "../shared/file-rpc";
 import { buildGitHubData } from "./github-request";
@@ -64,6 +64,7 @@ export interface LiveToolCallPayload {
   name: string;
   status: string;
   detail?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
   callId?: string;
   error?: string | null;
   phase?: string;
@@ -533,6 +534,10 @@ export function LiveToolCallRenderer({
     } else if (isAskTool(rawName)) {
       toolKind = "ask";
       askQuestions = applyAnswers(parseAskQuestions(input), [detail, output], outputText);
+      if (rawName === "request_user_input") {
+        const questions = parseCodexQuestionMetadata(data.metadata);
+        if (questions.length) askQuestions = questions;
+      }
       if (!askQuestions.length && codexAsk.questions.length) askQuestions = codexAsk.questions;
       const first = askQuestions[0];
       const lead = first?.question || first?.header || "User Decision";
