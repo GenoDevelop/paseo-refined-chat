@@ -108,6 +108,8 @@ Ask an agent to use its question tool, with one question and then with several
 - In Codex, answer an async question with an option containing a comma. All
   options remain separate and the selected one is ticked. Reload the plugin:
   captured options and the selected answer should survive through daemon storage.
+- Also test synchronous Codex `request_user_input`: questions, option descriptions
+  and selections come directly from timeline metadata, including on history replay.
 - Codex questions without archived definitions retain their readable text fallback.
 - A Codex answer's duplicate user message disappears without a gap, including
   when its question card belongs to an automatically collapsed run. A message
