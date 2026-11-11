@@ -686,10 +686,11 @@ export function LiveToolCallRenderer({
   }
 
   return (
-    <View {...runRowProps(runKey)}>
+    <View {...runRowProps(runKey)} nativeID={data.callId ? `refined-outline:${agentId}:${data.callId}` : undefined}>
       <RunBar agentId={agentId} cardKey={runKey} enabled={preferences.cardRunBar} rule={preferences.cardRunCollapse} startCollapsed={preferences.startCollapsedKinds} tokens={tokens} />
       <ToolCallout
         data={calloutData}
+        revealKey={data.callId ? `${agentId}:${data.callId}` : undefined}
         onOpenPlan={workspaceId && calloutData.plan ? () => openPlanPreview(workspaceId, calloutData.id, calloutData.plan!) : undefined}
         tokens={tokens}
         stateKey={preferences.cardRunBar ? runKey : undefined}

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { saveCardState, savedCardState } from "../card-state";
+import { saveCardState, savedCardState, subscribeCardReveal } from "../card-state";
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
-import type { TextStyle, ViewStyle } from "react-native";
+import type { TextStyle, ViewStyle, ViewProps } from "react-native";
 import { Glyph } from "./glyph";
 import { frosted } from "./frosted";
 import { surfaceProps } from "./view-props";
@@ -74,6 +74,7 @@ interface ToolCalloutProps {
   autoCollapse?: AutoCollapseRules;
   /** Keeps the open state across being hidden and shown again; see `card-state`. */
   stateKey?: string;
+  revealKey?: string;
   /**
    * Opens a path: in the side panel when it is a file there, otherwise in the
    * machine's own file manager. `kind` is passed when the text already says
@@ -106,6 +107,7 @@ export function ToolCallout({
   defaultExpanded = true,
   autoCollapse,
   stateKey,
+  revealKey,
   onRevealPath,
   imageFile,
   editLine,
@@ -117,6 +119,10 @@ export function ToolCallout({
   const [expanded, setExpanded] = useState(restored?.expanded ?? defaultExpanded);
   const [touched, setTouched] = useState(restored?.touched ?? false);
   useEffect(() => saveCardState(stateKey, { expanded, touched }), [stateKey, expanded, touched]);
+  useEffect(() => {
+    if (!revealKey) return;
+    return subscribeCardReveal(revealKey, () => { setTouched(true); setExpanded(true); });
+  }, [revealKey]);
 
   // Every branch below needs a payload. A tool that carries none — a hub op
   // with no parsed record, an unmapped kind — would otherwise draw an empty
@@ -625,7 +631,8 @@ export function ToolCallout({
 
   return (
     <View
-      {...surfaceProps(frosted, glowing(tokens.isDark), selectionSurface)}
+      {...surfaceProps(frosted, glowing(tokens.isDark), selectionSurface,
+        { dataSet: { outlineCardOpen: expanded ? "true" : "false" } } as unknown as ViewProps)}
       style={styles.container}
     >
       <Pressable onPress={toggleExpanded} style={styles.header}>

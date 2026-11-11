@@ -5,6 +5,7 @@ import { embedFonts } from "./client/components/embed-fonts";
 import { FILE_PREVIEW_PANEL_ID, FilePreviewPanel, registerPanelOpener } from "./client/file-preview";
 import { PLAN_PANEL_ID, PlanPreviewPanel, registerPlanPanelOpener } from "./client/plan-preview";
 import { isHiddenPlanMessage, onPlanHistoryChange } from "./client/plan-history";
+import { ConversationOutlinePanel, OUTLINE_PANEL_ID } from "./client/outline-panel";
 import { installFrostedGlass } from "./client/components/frosted";
 import { installShimmer } from "./client/components/shimmer";
 import { installPointerGlow } from "./client/components/glow";
@@ -44,6 +45,37 @@ function toJsonValue(value: unknown): JsonValue {
 }
 
 export default function contribute(client: PluginClientContext) {
+  const removeOutline = client.addAgentPanel({
+    id: OUTLINE_PANEL_ID, title: "Conversation outline", icon: "ListTree", locations: ["explorer"], Component: ConversationOutlinePanel,
+  });
+  const removeOutlineCommand = client.addSlashCommand({
+    name: "outline", description: "Browse prompts, plans, questions and errors", argumentHint: "", context: "agent",
+    onSubmit({ openPanel }) { openPanel(OUTLINE_PANEL_ID, { location: "explorer" }); },
+  });
+  const outlineButtons = new Map<string, { workspaceId: string; remove(): void }>();
+  let outlineStopped = false;
+  const addOutlineButton = (agentId: string, workspaceId: string | undefined) => {
+    if (!workspaceId || outlineStopped || outlineButtons.get(agentId)?.workspaceId === workspaceId) return;
+    outlineButtons.get(agentId)?.remove();
+    const button = client.addComposerPill({
+      id: "open-conversation-outline", agentId, workspaceId,
+      button: {
+        title: "Conversation outline", label: "Outline", icon: "ListTree",
+        behavior: { kind: "action", onPress: () => client.openPanel(OUTLINE_PANEL_ID, { workspaceId, agentId, location: "explorer" }) },
+      },
+    });
+    outlineButtons.set(agentId, { workspaceId, remove: () => button.remove() });
+  };
+  const stopOutlineAgents = client.paseo.agents.subscribe(update => {
+    if (update.kind === "upsert") addOutlineButton(update.agent.id, update.agent.workspaceId);
+    else if (update.kind === "remove") {
+      outlineButtons.get(update.agentId)?.remove();
+      outlineButtons.delete(update.agentId);
+    }
+  });
+  client.paseo.agents.list().then(result => {
+    if (!outlineStopped) result.entries.forEach(({ agent }) => addOutlineButton(agent.id, agent.workspaceId));
+  }).catch(() => { /* Agent updates and /outline remain available if listing fails. */ });
   const stopQuestionArchive = attachQuestionArchive(client.rpc);
   const stopQuestionCapture = client.paseo.agents.subscribe(update => {
     if (update.kind === "upsert") captureCodexQuestions(update.agent.id, update.agent.pendingPermissions);
@@ -406,6 +438,12 @@ export default function contribute(client: PluginClientContext) {
   });
 
   return () => {
+    outlineStopped = true;
+    stopOutlineAgents();
+    outlineButtons.forEach(button => button.remove());
+    outlineButtons.clear();
+    removeOutline();
+    removeOutlineCommand();
     stopQuestionCapture();
     stopQuestionArchive();
     registerPanelOpener(null);
