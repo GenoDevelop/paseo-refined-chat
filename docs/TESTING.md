@@ -117,6 +117,27 @@ Use a project that holds a Markdown file with a heading, a link to another file 
 
 ## Plans in history
 
+- Open Compare with beside the copy/export controls in a plan card, the plan side
+  panel and Outline's plan details. Choose another plan from the same conversation:
+  From is the open plan and To is the selected one; deleted and added lines have
+  the correct direction. The source call is excluded from the picker.
+- Load earlier history if the second plan is older. Identical plans report no
+  differences. Change the target or close comparison. Switch the source plan or
+  agent and verify that the previous comparison does not remain on screen.
+
+- In both the plan card and side panel, Copy Markdown copies the original source,
+  including Polish text, code fences and links, without approval messages or badges.
+- Open a Plan entry from Outline: its detail view offers the same copy/export
+  actions using the original Markdown. The outline list and non-plan detail views
+  do not show those actions.
+- On desktop, Export .md starts a download named after the plan heading. Open it
+  in an editor and compare the source. Check a title with punctuation and an
+  unusually long title. On native, Share Markdown opens the system share sheet;
+  canceling it must not claim a successful share.
+- Switch the selected panel plan after copying: old action feedback clears and
+  copying/exporting uses the newly selected plan. Clipboard/download failures
+  show an error instead of claiming success.
+
 - In Claude, `ExitPlanMode` with plan detail renders as Awaiting decision before
   approval. Its `plan_approval` update retains the Markdown and shows the outcome.
 

@@ -1,38 +1,27 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, Platform } from "react-native";
-import { usePaseo, type PluginAgentPanelProps } from "@getpaseo/plugin/client";
-import type { PaseoAgentTimelineRefetchOptions } from "@getpaseo/client";
+import { type PluginAgentPanelProps } from "@getpaseo/plugin/client";
 import { ScrollView } from "@getpaseo/plugin/client/react-native";
 import { buildThemeTokens, withAlpha } from "./components/theme-tokens";
 import { Glyph } from "./components/glyph";
 import { hostFontEscape } from "./components/host-font-escape";
 import { MarkdownView } from "./components/markdown/markdown-view";
+import { PlanActions } from "./plan-preview";
+import { useConversationHistory } from "./conversation-history";
 import { SyntaxHighlightBlock } from "./components/syntax-highlight";
 import { useEnhancerPreferences } from "./preferences";
-import { outlineEntries, type OutlineRow, type OutlineEntry } from "./conversation-outline";
+import { outlineEntries, type OutlineEntry } from "./conversation-outline";
 import { nativeOutlineJump } from "./native-outline-jump";
 import { revealOutlineCard } from "./card-runs";
 import { requestCardReveal, cancelCardReveal } from "./card-state";
 
 export const OUTLINE_PANEL_ID = "conversation-outline";
 const OUTLINE_KINDS = ["Prompt", "Question", "Plan", "Error"] as const;
-interface History {
-  rows: OutlineRow[];
-  epoch: string;
-  cursor: PaseoAgentTimelineRefetchOptions["cursor"];
-  older: boolean;
-}
-const empty = (): History => ({ rows: [], epoch: "", cursor: undefined, older: false });
-
 export function ConversationOutlinePanel({ params, theme, host }: PluginAgentPanelProps) {
   const agentId = params.agentId;
-  const paseo = usePaseo();
-  const handle = useMemo(() => paseo.agents.ref(agentId), [paseo, agentId]);
   const preferences = useEnhancerPreferences();
   const tokens = useMemo(() => buildThemeTokens(theme.colors, preferences), [theme.colors, preferences]);
-  const [history, setHistory] = useState<History>(empty);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { history, loading, error, load } = useConversationHistory(agentId);
   const [query, setQuery] = useState("");
   const [enabledKinds, setEnabledKinds] = useState<OutlineEntry["kind"][]>(() => [...OUTLINE_KINDS]);
   const [selectedId, select] = useState<string | null>(null);
@@ -64,44 +53,7 @@ export function ConversationOutlinePanel({ params, theme, host }: PluginAgentPan
       setJumpMessage(message ?? ""); setJumping(false);
     }
   };
-  const generation = useRef(0);
-  const busy = useRef(false);
-  const load = useCallback(async (cursor?: PaseoAgentTimelineRefetchOptions["cursor"]) => {
-    if (busy.current) return;
-    busy.current = true;
-    const ticket = generation.current;
-    setLoading(true);
-    setError("");
-    try {
-      const page = await handle.timeline.refetch({ direction: cursor ? "before" : "tail", cursor, limit: 100, projection: "canonical" });
-      if (ticket !== generation.current) return;
-      setHistory(previous => {
-        const same = previous.epoch === page.epoch && !page.reset && !page.staleCursor;
-        const rows = new Map((same ? previous.rows : []).map(row => [row.seqStart, row]));
-        page.entries.forEach(row => rows.set(row.seqStart, row));
-        const keepEarlier = same && !cursor && previous.cursor && page.startCursor && previous.cursor.seq < page.startCursor.seq;
-        return { rows: [...rows.values()], epoch: page.epoch,
-          cursor: keepEarlier ? previous.cursor : page.startCursor ?? undefined,
-          older: keepEarlier ? previous.older : page.hasOlder };
-      });
-    } catch {
-      if (ticket === generation.current) setError("History could not be loaded. Try Refresh.");
-    } finally {
-      if (ticket === generation.current) { busy.current = false; setLoading(false); }
-    }
-  }, [handle]);
-  useEffect(() => {
-    generation.current++;
-    busy.current = false;
-    setHistory(empty()); select(null); setQuery(""); setJumpMessage("");
-    void load();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const subscription = handle.timeline.subscribe(() => {
-      if (!timer) timer = setTimeout(() => { timer = undefined; void load(); }, 600);
-    });
-    subscription.ready.catch(() => { /* Manual refresh remains available offline. */ });
-    return () => { generation.current++; clearTimeout(timer); subscription(); };
-  }, [load, handle]);
+  useEffect(() => { select(null); setQuery(""); setJumpMessage(""); }, [agentId]);
   const entries = useMemo(() => outlineEntries(history.rows), [history.rows]);
   const selected = entries.find(entry => entry.id === selectedId);
   const searched = useMemo(() => entries.filter(entry => `${entry.title}\n${entry.body}`.toLowerCase().includes(query.toLowerCase())), [entries, query]);
@@ -168,6 +120,7 @@ export function ConversationOutlinePanel({ params, theme, host }: PluginAgentPan
           <Text style={button}>{jumping ? "Cancel jump" : "Find in chat"}</Text>
         </Pressable>}
         {jumpMessage ? <Text style={label}>{jumpMessage}</Text> : null}
+        {selected.kind === "Plan" && <PlanActions markdown={selected.body} tokens={tokens} agentId={agentId} callId={selected.callId} />}
         {selected.kind === "Error"
           ? <SyntaxHighlightBlock code={selected.body} tokens={tokens} compact />
           : <MarkdownView text={selected.body} tokens={tokens} variant={preferences.markdownVariant} marks={preferences.highlightMarks} />}

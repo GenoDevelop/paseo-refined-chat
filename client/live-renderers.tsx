@@ -615,7 +615,7 @@ export function LiveToolCallRenderer({
   useEffect(() => {
     if (calloutData.plan) {
       rememberPlan(agentId, calloutData.id, calloutData.plan);
-      if (workspaceId) updatePlanPreview(workspaceId, calloutData.id, calloutData.plan);
+      if (workspaceId) updatePlanPreview(workspaceId, calloutData.id, calloutData.plan, agentId);
     }
   }, [agentId, workspaceId, calloutData.id, calloutData.plan]);
 
@@ -691,7 +691,8 @@ export function LiveToolCallRenderer({
       <ToolCallout
         data={calloutData}
         revealKey={data.callId ? `${agentId}:${data.callId}` : undefined}
-        onOpenPlan={workspaceId && calloutData.plan ? () => openPlanPreview(workspaceId, calloutData.id, calloutData.plan!) : undefined}
+        planAgentId={agentId}
+        onOpenPlan={workspaceId && calloutData.plan ? () => openPlanPreview(workspaceId, calloutData.id, calloutData.plan!, agentId) : undefined}
         tokens={tokens}
         stateKey={preferences.cardRunBar ? runKey : undefined}
         defaultExpanded={isExpanded}
