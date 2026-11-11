@@ -89,6 +89,32 @@ Use a project that holds a Markdown file with a heading, a link to another file 
   that line, in the output and in the error output alike. A URL, a version number
   and a `\\host\share` path stay plain text.
 
+## Conversation outline
+
+- Click Outline beside the message composer, or use `/outline`, in an agent
+  conversation. Both open the same agent's panel. Prompts, questions, plans and decisions,
+  and failures appear newest first. Successful file changes, ordinary reads and
+  successful shell output stay out of the index. Failed edits remain visible as errors.
+  New history updates the panel.
+- Select an entry to read its content, then return to the outline. Search filters
+  loaded history. Load earlier history extends the index without duplicating calls.
+- Toggle the coloured Prompt, Question, Plan and Error filters independently.
+  Search and types combine; turning every type off shows an explanatory empty
+  state. Refresh and loading older history preserve the selection.
+- Technical plan/answer prompts disappear only when the matching content exists.
+- On desktop, Find in chat jumps to an already mounted row. For an unloaded row,
+  the experimental adapter loads a native window around its sequence and uses
+  that chat's viewport to reveal it, including a collapsed card group. Cancel jump
+  or scroll the chat manually to cancel. A different host/agent, stale epoch or
+  unsupported private runtime must leave the preview readable and show a message.
+- Collapse the destination card itself and its group, then jump to it from Outline.
+  Both open before navigation completes. Repeat with start-collapsed and automatic
+  collapse enabled: explicit navigation keeps the destination open. Closing it
+  manually afterwards must still work.
+- Switch agents: no entries from the previous conversation remain. Simulate an
+  offline daemon and check the error and Refresh action. Check the panel on native:
+  previews work while the unsupported chat-jump action is absent.
+
 ## Plans in history
 
 - In Claude, `ExitPlanMode` with plan detail renders as Awaiting decision before

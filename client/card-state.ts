@@ -12,6 +12,30 @@ interface CardState {
 }
 
 const saved = new Map<string, CardState>();
+const pendingReveals = new Set<string>();
+const revealListeners = new Map<string, Set<() => void>>();
+
+/** Explicit navigation opens a mounted card, or waits until its group mounts it. */
+export function requestCardReveal(key: string): void {
+  const listeners = revealListeners.get(key);
+  if (listeners?.size) listeners.forEach(listener => listener());
+  else pendingReveals.add(key);
+}
+
+export function cancelCardReveal(key: string): void {
+  pendingReveals.delete(key);
+}
+
+export function subscribeCardReveal(key: string, reveal: () => void): () => void {
+  let listeners = revealListeners.get(key);
+  if (!listeners) { listeners = new Set(); revealListeners.set(key, listeners); }
+  listeners.add(reveal);
+  if (pendingReveals.delete(key)) reveal();
+  return () => {
+    listeners.delete(reveal);
+    if (!listeners.size) revealListeners.delete(key);
+  };
+}
 
 export function savedCardState(key: string | undefined): CardState | undefined {
   return key ? saved.get(key) : undefined;

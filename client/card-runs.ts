@@ -638,6 +638,15 @@ export function openRun(key: string): void {
   notifyHidden(true);
 }
 
+/** An explicit outline jump reveals the group containing its destination. */
+export function revealOutlineCard(callId: string | undefined): void {
+  const id = toolCardId(callId);
+  if (!id) return;
+  for (const [key, run] of [...closedRuns]) {
+    if (run.leaderId === id || run.ids.includes(id)) openRun(key);
+  }
+}
+
 /** Cards that follow a closed run's first can join it: hides them and counts them. */
 function takeIn(key: string, view: RunView, idle: boolean): void {
   const closedRun = closedRuns.get(key);
