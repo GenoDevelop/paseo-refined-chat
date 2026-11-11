@@ -79,6 +79,7 @@ export type ToolCallKind =
   | "eval"
   | "task"
   | "ask"
+  | "plan"
   | "hub"
   | "paseo"
   | "ast_grep"
@@ -402,7 +403,13 @@ export interface AskQuestionData {
   answers: string[];
 }
 
+export interface PlanData {
+  text: string;
+  decision: "proposed" | "pending" | "approved" | "rejected" | "canceled";
+}
+
 export interface ToolCalloutData {
+  plan?: PlanData;
   id: string;
   tool: ToolCallKind;
   title: string;

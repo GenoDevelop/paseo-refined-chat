@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { collapseKind, startsExpanded } from "./tool-collapse";
+import { parsePlan, planTitle } from "./plan";
+import { rememberPlan, useHiddenPlanMessage } from "./plan-history";
+import { openPlanPreview, updatePlanPreview } from "./plan-preview";
 import { View } from "react-native";
 import { useAgent, usePaseo, useRpc } from "@getpaseo/plugin/client";
 import { useRevealedText } from "@getpaseo/plugin/client/react-native";
@@ -469,6 +472,7 @@ export function LiveToolCallRenderer({
     const durationMs =
       typeof detail.durationMs === "number" ? detail.durationMs : extractEvalDuration(output);
     let toolKind: ToolCallKind = "bash";
+    const plan = parsePlan(rawName, detail, data.metadata, data.status);
     let hub: HubData | undefined;
     let mcp: McpToolData | undefined;
     let subagent: ToolCalloutData["subagent"];
@@ -531,6 +535,9 @@ export function LiveToolCallRenderer({
       toolKind = "mcp";
       title = rawName.replace(/^mcp__/, "").replace(/__/g, " / ");
       mcp = buildMcpData(rawName, input, output, durationMs);
+    } else if (plan) {
+      toolKind = "plan";
+      title = planTitle(plan.text);
     } else if (isAskTool(rawName)) {
       toolKind = "ask";
       askQuestions = applyAnswers(parseAskQuestions(input), [detail, output], outputText);
@@ -590,6 +597,7 @@ export function LiveToolCallRenderer({
         (toolKind === "ask" ? codexAsk.transcript || askTranscript(detail, outputText) : outputText) || errorText,
       cells: evalCells.length > 0 ? evalCells : undefined,
       askQuestions: askQuestions.length > 0 ? askQuestions : undefined,
+      plan,
       askTranscript: askQuestions.length === 0 ? codexAsk.transcript : undefined,
       // The first question, for the code that predates several per call.
       askOptions: askQuestions[0]?.options.length ? askQuestions[0].options : undefined,
@@ -603,6 +611,13 @@ export function LiveToolCallRenderer({
       github,
     };
   }, [data, codexAsk.questions, codexAsk.transcript]);
+
+  useEffect(() => {
+    if (calloutData.plan) {
+      rememberPlan(agentId, calloutData.id, calloutData.plan);
+      if (workspaceId) updatePlanPreview(workspaceId, calloutData.id, calloutData.plan);
+    }
+  }, [agentId, workspaceId, calloutData.id, calloutData.plan]);
 
   // The dock has no access to the job manager, so the timeline is its only
   // source: every job snapshot that passes through a card is republished, and
@@ -675,6 +690,7 @@ export function LiveToolCallRenderer({
       <RunBar agentId={agentId} cardKey={runKey} enabled={preferences.cardRunBar} rule={preferences.cardRunCollapse} startCollapsed={preferences.startCollapsedKinds} tokens={tokens} />
       <ToolCallout
         data={calloutData}
+        onOpenPlan={workspaceId && calloutData.plan ? () => openPlanPreview(workspaceId, calloutData.id, calloutData.plan!) : undefined}
         tokens={tokens}
         stateKey={preferences.cardRunBar ? runKey : undefined}
         defaultExpanded={isExpanded}
@@ -1022,7 +1038,8 @@ export function LiveUserMessageRenderer({
 }: PluginTimelineItemProps<LiveUserMessagePayload>) {
   const preferences = useEnhancerPreferences();
   const matchesAsk = useIsCodexAskReply(agentId, item.data.text);
-  const hiddenAskReply = matchesAsk && !item.data.images?.length;
+  const hiddenPlan = useHiddenPlanMessage(agentId, item.data.messageId, item.data.text, Boolean(item.data.images?.length));
+  const hiddenAskReply = (matchesAsk || hiddenPlan) && !item.data.images?.length;
   useEffect(() => {
     if (hiddenAskReply) noteCodexAskReply(agentId, item.data.messageId, item.data.text);
   }, [hiddenAskReply, agentId, item.data.messageId, item.data.text]);

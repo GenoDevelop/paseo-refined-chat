@@ -6,6 +6,7 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 ## [Unreleased]
 
 ### Added
+- Codex and Claude plans remain readable in conversation history as expandable Markdown cards, with descriptive titles and approval outcomes reported by Paseo. Claude's pending ExitPlanMode is supported too. Open a plan in its workspace's side panel to keep it beside the conversation. An exact duplicate of Codex's technical implementation prompt is hidden from the view without changing history.
 - Synchronous Codex question cards read structured timeline metadata, preserving question headings, option descriptions and answers matched by question ID.
 - Codex async question cards retain their full options through the live permission API and archive question definitions on the daemon, so the cards survive plugin reloads. Matching request/answer rows are combined, and an exact duplicate user answer is hidden even in an automatically collapsed group. Older questions without archived options keep a text fallback.
 - Questions (ask) is a separate card kind for start-collapsed and collapse-on-finish settings. Questions remain expanded by default; collapse-on-finish waits for all answers and respects the length threshold and manual card state.

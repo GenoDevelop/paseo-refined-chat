@@ -89,6 +89,21 @@ Use a project that holds a Markdown file with a heading, a link to another file 
   that line, in the output and in the error output alike. A URL, a version number
   and a `\\host\share` path stay plain text.
 
+## Plans in history
+
+- In Claude, `ExitPlanMode` with plan detail renders as Awaiting decision before
+  approval. Its `plan_approval` update retains the Markdown and shows the outcome.
+
+- Find Codex `plan` and `plan_approval` entries, including an accepted and a rejected
+  plan. Expand them: headings, lists, tables and fenced code render as Markdown.
+- Approval cards show Awaiting decision, Approved or Rejected only as reported by
+  Paseo. A historical plan without an outcome shows Proposed plan.
+- Press Open in side panel. The plan remains beside the conversation, and opening
+  a different plan replaces it. A panel in another workspace keeps its own plan.
+- Leave the panel open while accepting or rejecting that plan: its status updates
+  when the corresponding history card receives the outcome. Reopen the conversation
+  and check that plans remain readable from history.
+
 ## Questions the agent asks
 
 Ask an agent to use its question tool, with one question and then with several
