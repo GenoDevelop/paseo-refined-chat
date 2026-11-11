@@ -6,6 +6,10 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 ## [Unreleased]
 
 ### Added
+- Group headers count plans separately from other tools; plans keep the existing Other tools collapse settings.
+- Diff blocks offer inline / side by side views and a fullscreen viewer, closed with its button, Escape on web or native back. The fullscreen viewer uses an opaque theme background and a single fixed toolbar. Copy preserves the original unified diff.
+- Diff bodies retain source-language syntax colours, with backgrounds and markers indicating changes. C#, Razor and Java grammars are supported; unknown file types use neutral text rather than monochrome red/green.
+- Plan comparison treats the open plan as the new version and the selected plan as the baseline: additions and removals describe changes made by the open plan.
 - Compare with beside plan copy/export actions lets the reader select another plan from the same conversation, including earlier history, and inspect a directional Markdown diff. Identical plans show a no-differences message. Plans are never paired automatically.
 - Plan cards, the side-panel reader and plan details opened from Outline offer Copy Markdown and desktop Export .md, preserving the original plan text. Outline's list stays free of export controls. Native clients offer Share Markdown through the system share sheet. Export filenames are derived from the plan heading.
 - Experimental desktop outline navigation can use Paseo's private history window and viewport bindings to reveal an unloaded entry. It validates host, agent and history epoch, opens the destination card and its collapsed group, then keeps the card aligned until layout changes settle. Navigation supports cancellation and keeps the entry preview available when the installed Paseo version is unsupported.

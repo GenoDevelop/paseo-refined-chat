@@ -1,5 +1,6 @@
+import { fileHighlightLanguage } from "../../shared/highlight-languages";
 import React, { useState, useCallback, useEffect, useMemo } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Modal, ScrollView, Platform } from "react-native";
 import { copyText } from "@getpaseo/plugin/client/react-native";
 import { LINK_UNDERLINE, plainLinkProps } from "./markdown/link-style";
 import { Glyph } from "./glyph";
@@ -14,7 +15,7 @@ import { selectionCodeSurface, selectionSurface } from "./selection-actions";
 import { useHighlightedLines } from "../highlight";
 import { findOutputPaths } from "../output-paths";
 import type { PathKind } from "./markdown/file-path";
-import { diffLineNumbers, intralineRanges } from "./diff-text";
+import { diffLineNumbers, intralineRanges, sideBySideRows } from "./diff-text";
 import { planFold, useFold } from "../fold";
 import { FoldBar } from "./fold-bar";
 import type { IntralineRange } from "./diff-text";
@@ -122,9 +123,9 @@ const CODE_TOKEN_RE =
  */
 function dialectFor(isDiff: boolean, language: string, filename?: string): string {
   if (!isDiff) return language;
-  const ext = fileExtension(filename);
-  if (ext === "py") return "python";
-  if (ext === "html" || ext === "htm") return "html";
+  const ext = fileHighlightLanguage(filename);
+  if (ext === "python") return "python";
+  if (ext === "html") return "html";
   if (ext === "css" || ext === "scss" || ext === "sass") return "css";
   return "typescript";
 }
@@ -135,64 +136,10 @@ function dialectFor(isDiff: boolean, language: string, filename?: string): strin
  * run of changes render as one shape instead of a stack of them.
  */
 function diffTint(line: string | undefined, isDiff: boolean): "add" | "remove" | null {
-  if (!isDiff || line === undefined) return null;
+  if (!isDiff || line === undefined || isDiffChrome(line)) return null;
   if (line.startsWith("+")) return "add";
   if (line.startsWith("-")) return "remove";
   return null;
-}
-
-/** The lower-case extension of a path's last segment, or "" when it has none. */
-function fileExtension(filename?: string): string {
-  const base = (filename || "").toLowerCase().split(/[/\\]/).pop() || "";
-  const dot = base.lastIndexOf(".");
-  return dot > 0 ? base.slice(dot + 1) : "";
-}
-
-/**
- * Extensions the daemon has a grammar for, minus the diff grammars themselves.
- *
- * The daemon resolves the grammar; this set only decides whether asking it is
- * worth a round trip. So an extension missing here costs one uncoloured diff,
- * never a wrong one.
- */
-const CODE_FILE_EXTENSIONS: Record<string, true> = {
-  ts: true,
-  mts: true,
-  cts: true,
-  tsx: true,
-  js: true,
-  mjs: true,
-  cjs: true,
-  jsx: true,
-  json: true,
-  jsonc: true,
-  sh: true,
-  bash: true,
-  zsh: true,
-  py: true,
-  pyi: true,
-  yaml: true,
-  yml: true,
-  md: true,
-  markdown: true,
-  rs: true,
-  go: true,
-  html: true,
-  htm: true,
-  css: true,
-  sql: true,
-  toml: true,
-  dockerfile: true,
-  ps1: true,
-  psm1: true,
-};
-
-/** Whether the patched file names a language the daemon can tokenise. */
-function patchedFileIsCode(filename?: string): boolean {
-  const base = (filename || "").toLowerCase().split(/[/\\]/).pop() || "";
-  if (base === "dockerfile" || base.startsWith("dockerfile.")) return true;
-  const ext = fileExtension(filename);
-  return ext !== "" && CODE_FILE_EXTENSIONS[ext] === true;
 }
 
 /** A unified hunk header, which no source file opens a line with. */
@@ -499,6 +446,14 @@ export function SyntaxHighlightBlock({
   onHighlightPosition,
 }: SyntaxHighlightProps) {
   const [copied, setCopied] = useState(false);
+  const [split, setSplit] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    if (!fullscreen || Platform.OS !== "web" || typeof document === "undefined") return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") { event.stopPropagation(); setFullscreen(false); } };
+    document.addEventListener("keydown", close, true);
+    return () => document.removeEventListener("keydown", close, true);
+  }, [fullscreen]);
   // The marked row's offset inside the code area and the code area's inside the
   // block: layout reports each separately and in no fixed order.
   const [rowY, setRowY] = useState<number | null>(null);
@@ -548,8 +503,8 @@ export function SyntaxHighlightBlock({
   );
   const lineDialects = useMemo(() => classifyLines(lines, codeLanguage), [lines, codeLanguage]);
   const diffBodyCode = useMemo(
-    () => (isDiff && patchedFileIsCode(filename) ? strippedDiffCode(lines) : undefined),
-    [isDiff, filename, lines],
+    () => (isDiff ? strippedDiffCode(lines) : undefined),
+    [isDiff, lines],
   );
   // Grammar-accurate colours arrive from the daemon one round trip late, and
   // never for a language it has no grammar for. Until then, and after a failed
@@ -580,6 +535,7 @@ export function SyntaxHighlightBlock({
         header: {
           flexDirection: "row",
           alignItems: "flex-start",
+          flexWrap: "wrap",
           justifyContent: "space-between",
           gap: 8,
           paddingHorizontal: 12,
@@ -671,11 +627,111 @@ export function SyntaxHighlightBlock({
     [tokens, compact, copied],
   );
 
-  return (
-    // No pointer glow here: a code block is an inner surface, and lighting it
-    // separately from the card that holds it reads as two hovers at once.
-    <View {...surfaceProps(frosted, selectionSurface)} style={styles.container}>
-      {(filename || language) && (
+  const renderLine = (idx: number, side?: "old" | "new") => {
+    const line = lines[idx] ?? "";
+    const shikiLine = shikiLines?.[idx];
+    // The patched file's tokens, and only for a line the file owns. A
+    // chrome line keeps the diff rendering it has today.
+    const bodyLine = isDiff && !isDiffChrome(line) ? diffBodyLines?.[idx] : undefined;
+    const kind = diffTint(lines[idx], isDiff);
+    const spans = intraline?.get(idx);
+    // The part of the row that changed gets a stronger tint of the same
+    // colour, so a one-word edit reads as one word, not as two lines.
+    const emphasis: LineEmphasis | undefined =
+      spans && kind
+        ? {
+            ranges: spans,
+            bg:
+              kind === "add"
+                ? tokens.syntax.diffAddEmphasisBg
+                : tokens.syntax.diffRemoveEmphasisBg,
+          }
+        : undefined;
+    const marked = highlightLine !== undefined && startLine + idx === highlightLine;
+    const lineBg =
+      kind === "add"
+        ? tokens.syntax.diffAddBg
+        : kind === "remove"
+          ? tokens.syntax.diffRemoveBg
+          : marked
+            ? tokens.accentBg
+            : "transparent";
+
+    // Adjacent added and removed rows form one hunk. Only the hunk's
+    // outer edges round, so a delete-to-add transition stays flush.
+    const previousKind = diffTint(lines[idx - 1], isDiff);
+    const nextKind = diffTint(lines[idx + 1], isDiff);
+    const opensRun = kind !== null && previousKind === null;
+    const closesRun = kind !== null && nextKind === null;
+    const corner = radius.chip;
+
+    return (
+      <View
+        key={idx}
+        onLayout={marked && !fullscreen ? (event) => setRowY(event.nativeEvent.layout.y) : undefined}
+        style={[
+          styles.lineRow,
+          {
+            backgroundColor: lineBg,
+            borderTopLeftRadius: opensRun ? corner : 0,
+            borderTopRightRadius: opensRun ? corner : 0,
+            borderBottomLeftRadius: closesRun ? corner : 0,
+            borderBottomRightRadius: closesRun ? corner : 0,
+          },
+        ]}
+      >
+        {side && showLineNumbers && diffNumbers ? (
+          <Text style={styles.lineNumber}>{diffNumbers[idx]?.[side === "old" ? "oldLine" : "newLine"] ?? ""}</Text>
+        ) : showLineNumbers && !(isDiff && relativeDiff) && diffNumbers ? (
+          // Two columns, as a unified diff has two files: a removed row
+          // sits only in the old one, an added row only in the new one.
+          <>
+            <Text style={styles.lineNumber}>{diffNumbers[idx]?.oldLine ?? ""}</Text>
+            <Text style={styles.lineNumber}>{diffNumbers[idx]?.newLine ?? ""}</Text>
+          </>
+        ) : showLineNumbers && !(isDiff && relativeDiff) ? (
+          <Text style={styles.lineNumber}>{startLine + idx}</Text>
+        ) : null}
+        <Text selectable style={styles.lineContent}>
+          {bodyLine
+            ? renderDiffBodyLine(line, bodyLine, tokens, emphasis)
+            : shikiLine && (!isDiff || isDiffChrome(line))
+              ? renderShikiLine(
+                  shikiLine,
+                  tokens,
+                  // These tokens cover the whole row, marker included.
+                  shiftEmphasis(emphasis, 1),
+                )
+              : renderSyntaxLine(
+                  line,
+                  isDiff,
+                  language,
+                  lineDialects[idx] ?? codeLanguage,
+                  tokens,
+                  emphasis,
+                )}
+        </Text>
+      </View>
+    );
+  };
+  const renderContent = (expanded: boolean) => {
+    const visibleLines = lines.slice(0, !expanded && folded && plan ? plan.head : lines.length);
+    if (!split || !isDiff) return visibleLines.map((_, idx) => renderLine(idx));
+    return sideBySideRows(visibleLines).map((row, idx) =>
+      row.header !== undefined ? renderLine(row.header) : (
+        <View key={`pair-${idx}`} style={{ flexDirection: "row", alignItems: "stretch" }}>
+          <View style={{ flex: 1, minWidth: 0, borderRightWidth: 1, borderColor: tokens.borderSubtle }}>
+            {row.old !== undefined ? renderLine(row.old, "old") : null}
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            {row.new !== undefined ? renderLine(row.new, "new") : null}
+          </View>
+        </View>
+      ));
+  };
+
+  const renderHeader = (expanded: boolean) =>
+    (filename || language) ? (
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <FileTypeLogo
@@ -708,109 +764,44 @@ export function SyntaxHighlightBlock({
               </Text>
             ) : null}
           </View>
-          <Pressable onPress={handleCopy} style={styles.copyButton}>
-            <Pop trigger={copied}>
-              <Glyph
-                name={copied ? "Check" : "Copy"}
-                size={12}
-                color={copied ? tokens.success : tokens.foregroundMuted}
-              />
-            </Pop>
-            <Text style={styles.copyText}>{copied ? "Copied" : "Copy"}</Text>
-          </Pressable>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
+            {isDiff ? <>
+              <Pressable onPress={() => setSplit(!split)} style={styles.copyButton} accessibilityRole="button" accessibilityLabel={split ? "Switch to inline diff" : "Switch to side by side diff"}>
+                <Text style={styles.copyText}>{split ? "Inline" : "Side by side"}</Text>
+              </Pressable>
+            </> : null}
+            <Pressable onPress={handleCopy} style={styles.copyButton}>
+              <Pop trigger={copied}>
+                <Glyph
+                  name={copied ? "Check" : "Copy"}
+                  size={12}
+                  color={copied ? tokens.success : tokens.foregroundMuted}
+                />
+              </Pop>
+              <Text style={styles.copyText}>{copied ? "Copied" : "Copy"}</Text>
+            </Pressable>
+            {isDiff ? (
+              <Pressable onPress={() => setFullscreen(!expanded)} style={styles.copyButton} accessibilityRole="button" accessibilityLabel={expanded ? "Close fullscreen diff" : "Open fullscreen diff"}>
+                <Text style={styles.copyText}>{expanded ? "Close" : "Fullscreen"}</Text>
+              </Pressable>
+            ) : null}
+          </View>
         </View>
-      )}
+    ) : null;
+
+  const renderBlock = (expanded = false) => (
+    // No pointer glow here: a code block is an inner surface, and lighting it
+    // separately from the card that holds it reads as two hovers at once.
+    <View {...surfaceProps(frosted, selectionSurface)} style={styles.container}>
+      {renderHeader(expanded)}
 
       <View
         {...selectionCodeSurface}
         style={styles.codeArea}
-        onLayout={(event) => setAreaY(event.nativeEvent.layout.y)}
+        onLayout={!expanded ? (event) => setAreaY(event.nativeEvent.layout.y) : undefined}
       >
-        {lines.slice(0, folded && plan ? plan.head : lines.length).map((line, idx) => {
-          const shikiLine = shikiLines?.[idx];
-          // The patched file's tokens, and only for a line the file owns. A
-          // chrome line keeps the diff rendering it has today.
-          const bodyLine = isDiff && !isDiffChrome(line) ? diffBodyLines?.[idx] : undefined;
-          const kind = diffTint(lines[idx], isDiff);
-          const spans = intraline?.get(idx);
-          // The part of the row that changed gets a stronger tint of the same
-          // colour, so a one-word edit reads as one word, not as two lines.
-          const emphasis: LineEmphasis | undefined =
-            spans && kind
-              ? {
-                  ranges: spans,
-                  bg:
-                    kind === "add"
-                      ? tokens.syntax.diffAddEmphasisBg
-                      : tokens.syntax.diffRemoveEmphasisBg,
-                }
-              : undefined;
-          const marked = highlightLine !== undefined && startLine + idx === highlightLine;
-          const lineBg =
-            kind === "add"
-              ? tokens.syntax.diffAddBg
-              : kind === "remove"
-                ? tokens.syntax.diffRemoveBg
-                : marked
-                  ? tokens.accentBg
-                  : "transparent";
-
-          // Adjacent added and removed rows form one hunk. Only the hunk's
-          // outer edges round, so a delete-to-add transition stays flush.
-          const previousKind = diffTint(lines[idx - 1], isDiff);
-          const nextKind = diffTint(lines[idx + 1], isDiff);
-          const opensRun = kind !== null && previousKind === null;
-          const closesRun = kind !== null && nextKind === null;
-          const corner = radius.chip;
-
-          return (
-            <View
-              key={idx}
-              onLayout={marked ? (event) => setRowY(event.nativeEvent.layout.y) : undefined}
-              style={[
-                styles.lineRow,
-                {
-                  backgroundColor: lineBg,
-                  borderTopLeftRadius: opensRun ? corner : 0,
-                  borderTopRightRadius: opensRun ? corner : 0,
-                  borderBottomLeftRadius: closesRun ? corner : 0,
-                  borderBottomRightRadius: closesRun ? corner : 0,
-                },
-              ]}
-            >
-              {showLineNumbers && !(isDiff && relativeDiff) && diffNumbers ? (
-                // Two columns, as a unified diff has two files: a removed row
-                // sits only in the old one, an added row only in the new one.
-                <>
-                  <Text style={styles.lineNumber}>{diffNumbers[idx]?.oldLine ?? ""}</Text>
-                  <Text style={styles.lineNumber}>{diffNumbers[idx]?.newLine ?? ""}</Text>
-                </>
-              ) : showLineNumbers && !(isDiff && relativeDiff) ? (
-                <Text style={styles.lineNumber}>{startLine + idx}</Text>
-              ) : null}
-              <Text selectable style={styles.lineContent}>
-                {bodyLine
-                  ? renderDiffBodyLine(line, bodyLine, tokens, emphasis)
-                  : shikiLine
-                    ? renderShikiLine(
-                        shikiLine,
-                        tokens,
-                        // These tokens cover the whole row, marker included.
-                        shiftEmphasis(emphasis, 1),
-                      )
-                    : renderSyntaxLine(
-                        line,
-                        isDiff,
-                        language,
-                        lineDialects[idx] ?? codeLanguage,
-                        tokens,
-                        emphasis,
-                      )}
-              </Text>
-            </View>
-          );
-        })}
-        {plan && (folded || open) ? (
+        {renderContent(expanded)}
+        {!expanded && plan && (folded || open) ? (
           <FoldBar
             hidden={plan.hidden}
             open={open}
@@ -821,6 +812,17 @@ export function SyntaxHighlightBlock({
       </View>
     </View>
   );
+  return <>
+    {renderBlock()}
+    {fullscreen ? <Modal visible animationType="fade" onRequestClose={() => setFullscreen(false)}>
+      <View style={{ flex: 1, backgroundColor: tokens.surface0 }} accessibilityViewIsModal>
+        {renderHeader(true)}
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
+          <View {...selectionCodeSurface} style={styles.codeArea}>{renderContent(true)}</View>
+        </ScrollView>
+      </View>
+    </Modal> : null}
+  </>;
 }
 
 /**

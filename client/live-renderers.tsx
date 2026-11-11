@@ -640,7 +640,7 @@ export function LiveToolCallRenderer({
     toolCardId(data.callId),
     timestamp.getTime(),
     {
-      kind: collapseKind(calloutData.tool),
+      kind: calloutData.tool === "plan" ? "plan" : collapseKind(calloutData.tool),
       status: calloutData.status === "completed" ? "done" : calloutData.status,
     },
     preferences.cardRunBar && !codexAsk.hidden,
