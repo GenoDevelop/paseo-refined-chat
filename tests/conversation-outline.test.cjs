@@ -30,6 +30,7 @@ test("Indexes the requested kinds without filling the outline with reads and she
   ]);
   assert.deepEqual(entries.map(entry => entry.kind), ["Prompt", "Plan", "Question", "Error"]);
   assert.equal(entries[1].title, "Checkout");
+  assert.equal(entries[1].body, "# Checkout\n\nSteps");
   assert.match(entries[2].body, /Answer:\*\* Purple/);
   assert.equal(entries[3].title, "shell: Tests failed");
   assert.equal(entries[0].messageId, "prompt");

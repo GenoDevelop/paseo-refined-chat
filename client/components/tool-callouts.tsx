@@ -65,6 +65,7 @@ function getToolIconName(tool: string): string {
 interface ToolCalloutProps {
   data: ToolCalloutData;
   onOpenPlan?: () => void;
+  planAgentId?: string;
   tokens: ExtendedThemeTokens;
   defaultExpanded?: boolean;
   /**
@@ -103,6 +104,7 @@ interface ToolCalloutProps {
 export function ToolCallout({
   data,
   onOpenPlan,
+  planAgentId,
   tokens,
   defaultExpanded = true,
   autoCollapse,
@@ -1051,7 +1053,7 @@ export function ToolCallout({
 
           {data.tool === "plan" && data.plan && (
             <RevealPathContext.Provider value={onRevealPath ?? null}>
-              <PlanContent plan={data.plan} tokens={tokens} showStatus={false} />
+              <PlanContent plan={data.plan} tokens={tokens} agentId={planAgentId} callId={data.id} showStatus={false} />
             </RevealPathContext.Provider>
           )}
 

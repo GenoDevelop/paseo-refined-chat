@@ -7,9 +7,12 @@ are excluded after user feedback about noise. Start with
 an agent panel, history pagination and an entry preview. Jump to loaded chat rows
 on desktop; the SDK currently exposes no cross-platform scroll-to-history API.
 
-## Plan comparison and export
+## Plan comparison and export (implemented)
 
-Compare successive plan versions and copy or export a plan as Markdown.
+Desktop offers a .md download and native clients can share the original Markdown
+text. Compare with allows an explicit choice of two plans from the same agent's
+history, with a directional Markdown diff. Plans are not paired automatically.
+Further diff presentation changes are reserved for a follow-up PR.
 
 ## History filters
 
