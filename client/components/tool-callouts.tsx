@@ -28,6 +28,8 @@ import type { ToolCalloutData } from "../../shared/contracts";
 import { lineSelector } from "../../shared/file-rpc";
 import { displayPath } from "../file-link";
 import { sameAnswer } from "../ask-question";
+import { PlanBadge, PlanContent } from "../plan-preview";
+import { RevealPathContext } from "./markdown/markdown-view";
 import { hasAskAnswers, shouldAutoCollapse } from "../tool-collapse";
 import type { AutoCollapseRules } from "../tool-collapse";
 
@@ -53,6 +55,7 @@ function getToolIconName(tool: string): string {
   if (tool === "thinking") return "Brain";
   if (tool === "eval") return "Play";
   if (tool === "ask") return "HelpCircle";
+  if (tool === "plan") return "ListChecks";
   if (tool === "mcp") return "Plug";
   if (tool === "task") return "Bot";
   if (tool === "hub") return "Radio";
@@ -61,6 +64,7 @@ function getToolIconName(tool: string): string {
 
 interface ToolCalloutProps {
   data: ToolCalloutData;
+  onOpenPlan?: () => void;
   tokens: ExtendedThemeTokens;
   defaultExpanded?: boolean;
   /**
@@ -97,6 +101,7 @@ interface ToolCalloutProps {
 
 export function ToolCallout({
   data,
+  onOpenPlan,
   tokens,
   defaultExpanded = true,
   autoCollapse,
@@ -117,6 +122,7 @@ export function ToolCallout({
   // with no parsed record, an unmapped kind — would otherwise draw an empty
   // panel, so the raw output takes over.
   const hasTypedBody =
+    (data.tool === "plan" && Boolean(data.plan)) ||
     data.tool === "bash" ||
     data.tool === "shell" ||
     data.tool === "git" ||
@@ -660,6 +666,11 @@ export function ToolCallout({
         </View>
 
         <View style={styles.headerRight}>
+          {data.plan && <PlanBadge plan={data.plan} tokens={tokens} />}
+          {onOpenPlan && <Pressable accessibilityRole="button" accessibilityLabel="Open plan in side panel"
+            onPress={event => { event.stopPropagation(); onOpenPlan(); }}>
+            <Text style={{ color: tokens.accent, fontFamily: tokens.fontUi, fontSize: tokens.fs(11) }}>Open in side panel</Text>
+          </Pressable>}
           {diffStat && (diffStat.added > 0 || diffStat.removed > 0) ? (
             <View style={styles.diffStat}>
               {diffStat.added > 0 ? (
@@ -1029,6 +1040,12 @@ export function ToolCallout({
                 </View>
               ))}
             </View>
+          )}
+
+          {data.tool === "plan" && data.plan && (
+            <RevealPathContext.Provider value={onRevealPath ?? null}>
+              <PlanContent plan={data.plan} tokens={tokens} showStatus={false} />
+            </RevealPathContext.Provider>
           )}
 
           {data.tool === "ask" && !askQuestions.length && data.askTranscript && (

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { BeautifulChatSettingsPage } from "./client/settings-page";
 import { embedFonts } from "./client/components/embed-fonts";
 import { FILE_PREVIEW_PANEL_ID, FilePreviewPanel, registerPanelOpener } from "./client/file-preview";
+import { PLAN_PANEL_ID, PlanPreviewPanel, registerPlanPanelOpener } from "./client/plan-preview";
+import { isHiddenPlanMessage, onPlanHistoryChange } from "./client/plan-history";
 import { installFrostedGlass } from "./client/components/frosted";
 import { installShimmer } from "./client/components/shimmer";
 import { installPointerGlow } from "./client/components/glow";
@@ -131,6 +133,10 @@ export default function contribute(client: PluginClientContext) {
     Component: FilePreviewPanel,
   });
   registerPanelOpener((id, options) => client.openPanel(id, options));
+  const removePlanPanel = client.addWorkspacePanel({
+    id: PLAN_PANEL_ID, title: "Plan", icon: "ListChecks", locations: ["explorer"], Component: PlanPreviewPanel,
+  });
+  registerPlanPanelOpener((id, options) => client.openPanel(id, options));
 
   // Live chat timeline interception: render real tool calls, reasoning, and todos with enhanced UI.
   // A bar over a run of cards hides the cards through these transformers. The
@@ -276,7 +282,7 @@ export default function contribute(client: PluginClientContext) {
       // Replacing the item drops whatever this renderer does not carry, so a
       // message with an attachment it cannot show is left to the host.
       if (images.hasUnrenderable) return undefined;
-      if (images.uris.length === 0 && isHiddenCodexReply(item.messageId, item.text)) return { items: [] };
+      if (images.uris.length === 0 && (isHiddenCodexReply(item.messageId, item.text) || isHiddenPlanMessage(item.messageId, item.text))) return { items: [] };
       // A prompt with no text is a pasted image and nothing else. The host
       // withholds the image from the plugin, so there is nothing here to draw:
       // an empty bubble would replace the screenshot with a blank. The host's
@@ -307,7 +313,7 @@ export default function contribute(client: PluginClientContext) {
   let removeUserTransformer = addUserTransformer();
   let userRefreshQueued = false;
   let userTransformerStopped = false;
-  const removeAskListener = onCodexAskChange(() => {
+  const refreshUserTransformer = () => {
     if (userRefreshQueued || userTransformerStopped) return;
     userRefreshQueued = true;
     queueMicrotask(() => {
@@ -316,7 +322,9 @@ export default function contribute(client: PluginClientContext) {
       removeUserTransformer();
       removeUserTransformer = addUserTransformer();
     });
-  });
+  };
+  const removeAskListener = onCodexAskChange(refreshUserTransformer);
+  const removePlanListener = onPlanHistoryChange(refreshUserTransformer);
 
   const removeUserRenderer = client.addTimelineRenderer({
     kind: "omp-user-message",
@@ -401,6 +409,8 @@ export default function contribute(client: PluginClientContext) {
     stopQuestionCapture();
     stopQuestionArchive();
     registerPanelOpener(null);
+    registerPlanPanelOpener(null);
+    removePlanPanel();
     removeRemotePreferences();
     removeSettingsCommand();
     removeSettingsCenterItem();
@@ -425,6 +435,7 @@ export default function contribute(client: PluginClientContext) {
     removeTodoRenderer();
     userTransformerStopped = true;
     removeAskListener();
+    removePlanListener();
     removeUserTransformer();
     removeUserRenderer();
     removeAssistantTransformer();
