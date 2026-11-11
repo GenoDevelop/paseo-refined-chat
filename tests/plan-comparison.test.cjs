@@ -42,7 +42,7 @@ function text(value) {
   return value && typeof value === "object" ? text(value.props?.children) : typeof value === "string" ? value : "";
 }
 
-test("Choosing another plan compares open source to selected target and excludes the source", () => {
+test("The open plan is the new version and the chosen plan is the baseline", () => {
   const ui = comparison([row(1, "source", "# Open plan\n\nOld step"), row(2, "target", "# New plan\n\nNew step")], "# Open plan\n\nOld step");
   const picker = ui.render();
   const choices = nodes(picker).filter(node => node.type === "Button");
@@ -51,10 +51,10 @@ test("Choosing another plan compares open source to selected target and excludes
   choices[0].props.onPress();
   const result = ui.render();
   const diff = nodes(result).find(node => node.type === "Diff");
-  assert.match(diff.props.code, /-Old step/);
-  assert.match(diff.props.code, /\+New step/);
-  assert.match(text(result), /From: Open plan/);
-  assert.match(text(result), /To: New plan/);
+  assert.match(diff.props.code, /\+Old step/);
+  assert.match(diff.props.code, /-New step/);
+  assert.match(text(result), /Current plan \(new\): Open plan/);
+  assert.match(text(result), /Baseline \(old\): New plan/);
 });
 
 test("Identical plans show no differences and the comparison can be changed", () => {

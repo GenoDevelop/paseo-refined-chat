@@ -119,7 +119,8 @@ Use a project that holds a Markdown file with a heading, a link to another file 
 
 - Open Compare with beside the copy/export controls in a plan card, the plan side
   panel and Outline's plan details. Choose another plan from the same conversation:
-  From is the open plan and To is the selected one; deleted and added lines have
+  Current plan (new) is the open plan and Baseline (old) is the selected one;
+  green lines were added by the current plan and red lines were removed. Lines have
   the correct direction. The source call is excluded from the picker.
 - Load earlier history if the second plan is older. Identical plans report no
   differences. Change the target or close comparison. Switch the source plan or
@@ -192,3 +193,23 @@ Run the focused parser, archive and collapse tests with
 `node tests/tool-collapse.test.cjs`. `npm run typecheck` must also pass.
 Check UI changes by hand in a running Paseo (`paseo plugin reload`) on a dark
 and a light theme. Each PR states what was and was not exercised.
+
+
+## Diff views and syntax colours
+
+Run `node tests/diff-view.test.cjs` and `npm run typecheck`.
+In an edit card, check a C# or Razor diff: keywords, strings and comments
+retain source colours while additions/removals have tinted backgrounds.
+Switch Inline / Side by side: old content stays left, new content right,
+context aligns, and unequal additions/removals leave empty cells. Check line
+numbers and a multi-hunk change. Open Fullscreen from a folded long diff:
+the viewer shows all rows while the chat block stays folded. Close with the
+button, Escape on web or Android back. Copy still returns the original patch.
+Repeat on a narrow viewport and both themes; check a plain-text diff and the
+plan comparison too. Unknown file types should have neutral body text.
+
+- In dark and light themes, fullscreen has an opaque theme background and one
+  fixed toolbar; scrolling the diff does not hide Close, layout switching or Copy.
+- Group a plan with a thought and another tool: its summary counts the plan
+  separately, including while closed. Plan collapse preferences remain Other
+  tools; no new Plan setting should appear.

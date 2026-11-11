@@ -350,3 +350,26 @@ export function offsetHunkHeaders(diff: string, by: number): string {
     )
     .join("\n");
 }
+
+/** Paired indices keep context aligned and leave gaps for unequal change runs. */
+export function sideBySideRows(lines: string[]): { old?: number; new?: number; header?: number }[] {
+  const rows: { old?: number; new?: number; header?: number }[] = [];
+  let removed: number[] = [];
+  let added: number[] = [];
+  const flush = () => {
+    for (let i = 0; i < Math.max(removed.length, added.length); i++) rows.push({ old: removed[i], new: added[i] });
+    removed = []; added = [];
+  };
+  lines.forEach((line, index) => {
+    if (line.startsWith("-") && !line.startsWith("--- ")) {
+      if (added.length) flush();
+      removed.push(index);
+    } else if (line.startsWith("+") && !line.startsWith("+++ ")) added.push(index);
+    else {
+      flush();
+      rows.push(line.startsWith(" ") ? { old: index, new: index } : { header: index });
+    }
+  });
+  flush();
+  return rows;
+}

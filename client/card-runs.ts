@@ -27,7 +27,9 @@ import type { CollapseKind } from "./tool-collapse";
 /** Where a card is in its call: still going, done, or ended in failure. */
 export type CardStatus = "running" | "done" | "failed";
 
-type KindCounts = Partial<Record<CollapseKind, number>>;
+/** Display categories may be more specific than the shared collapse settings. */
+type RunKind = CollapseKind | "plan";
+type KindCounts = Partial<Record<RunKind, number>>;
 
 interface Member {
   key: string;
@@ -35,7 +37,7 @@ interface Member {
   id: string | undefined;
   at: number;
   card: boolean;
-  kind?: CollapseKind;
+  kind?: RunKind;
   status: CardStatus;
   /** The row this item draws, once it is in the page; the order on screen is its order. */
   el: Node | null;
@@ -47,12 +49,12 @@ interface ClosedRun {
   ids: string[];
   kinds: KindCounts;
   /** The kind of each hidden card, to tell whether a failure of it keeps the run open. */
-  kindOf: Record<string, CollapseKind>;
+  kindOf: Record<string, RunKind>;
   /** True when the collapse rule closed it, so it may take in the cards that follow. */
   auto: boolean;
   /** The first card, which stays drawn: what other records find this one by. */
   leaderId?: string;
-  leaderKind?: CollapseKind;
+  leaderKind?: RunKind;
 }
 
 /** A run is worth a bar once it has this many cards. */
@@ -180,7 +182,7 @@ function remove(agentId: string, key: string): void {
   publish();
 }
 
-function update(agentId: string, key: string, kind: CollapseKind | undefined, status: CardStatus) {
+function update(agentId: string, key: string, kind: RunKind | undefined, status: CardStatus) {
   const member = byAgent.get(agentId)?.find((entry) => entry.key === key);
   if (!member || (member.kind === kind && member.status === status)) return;
   member.kind = kind;
@@ -190,7 +192,7 @@ function update(agentId: string, key: string, kind: CollapseKind | undefined, st
 
 /** What a card tells the run store about itself. */
 export interface CardInfo {
-  kind: CollapseKind;
+  kind: RunKind;
   status: CardStatus;
 }
 
@@ -343,30 +345,31 @@ function countKinds(members: Member[]): KindCounts {
 }
 
 /** The kind of every card in `members` that the transformers can tell apart. */
-function kindsById(members: Member[]): Record<string, CollapseKind> {
-  const kinds: Record<string, CollapseKind> = {};
+function kindsById(members: Member[]): Record<string, RunKind> {
+  const kinds: Record<string, RunKind> = {};
   for (const member of members) if (member.id && member.kind) kinds[member.id] = member.kind;
   return kinds;
 }
 
 function addKinds(into: KindCounts, more: KindCounts): KindCounts {
   const counts: KindCounts = { ...into };
-  for (const [kind, n] of Object.entries(more) as [CollapseKind, number][]) {
+  for (const [kind, n] of Object.entries(more) as [RunKind, number][]) {
     counts[kind] = (counts[kind] ?? 0) + n;
   }
   return counts;
 }
 
-const PHRASES: Record<CollapseKind, [one: string, many: string]> = {
+const PHRASES: Record<RunKind, [one: string, many: string]> = {
   shell: ["ran 1 command", "ran # commands"],
   read: ["read 1 file", "read # files"],
   edit: ["edited 1 file", "edited # files"],
   write: ["wrote 1 file", "wrote # files"],
   ask: ["1 question card", "# question cards"],
+  plan: ["1 plan", "# plans"],
   other: ["used 1 other tool", "used # other tools"],
   thinking: ["1 thought", "# thoughts"],
 };
-const PHRASE_ORDER: CollapseKind[] = ["shell", "read", "edit", "write", "ask", "other", "thinking"];
+const PHRASE_ORDER: RunKind[] = ["shell", "read", "edit", "write", "ask", "plan", "other", "thinking"];
 
 /** "Ran 3 commands, read 2 files, 1 thought": what the cards of a run did. */
 export function describeKinds(counts: KindCounts, total: number): string {
@@ -675,7 +678,7 @@ function takeIn(key: string, view: RunView, idle: boolean): void {
  * kind starts collapsed, and a run follows its cards.
  */
 function pinning(key: string, view: RunView, startCollapsed: readonly CollapseKind[]): number {
-  const pins = (kind: CollapseKind | undefined) => !kind || !startCollapsed.includes(kind);
+  const pins = (kind: RunKind | undefined) => !kind || !startCollapsed.includes(kind === "plan" ? "other" : kind);
   const drawn = view.members.filter((member) => member.status === "failed" && pins(member.kind));
   const closedRun = closedRuns.get(key);
   const hiddenFailed = closedRun

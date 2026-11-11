@@ -1,3 +1,4 @@
+import { fileHighlightLanguage } from "./shared/highlight-languages";
 import { spawn } from "node:child_process";
 import { open, readFile, realpath, stat, type FileHandle } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -172,41 +173,6 @@ const ALIASES: Record<string, string | null> = {
   txt: null,
 };
 
-/** File extensions the chat shows often, lower-case and without the dot. */
-const EXTENSIONS: Record<string, string> = {
-  ts: "typescript",
-  mts: "typescript",
-  cts: "typescript",
-  tsx: "tsx",
-  js: "javascript",
-  mjs: "javascript",
-  cjs: "javascript",
-  jsx: "jsx",
-  json: "json",
-  jsonc: "json",
-  sh: "shellscript",
-  bash: "shellscript",
-  zsh: "shellscript",
-  py: "python",
-  pyi: "python",
-  diff: "diff",
-  patch: "diff",
-  yaml: "yaml",
-  yml: "yaml",
-  md: "markdown",
-  markdown: "markdown",
-  rs: "rust",
-  go: "go",
-  html: "html",
-  htm: "html",
-  css: "css",
-  sql: "sql",
-  toml: "toml",
-  dockerfile: "docker",
-  ps1: "powershell",
-  psm1: "powershell",
-};
-
 type ShikiCore = typeof import("@shikijs/core");
 type Highlighter = Awaited<ReturnType<ShikiCore["createHighlighterCore"]>>;
 
@@ -250,6 +216,9 @@ async function buildEngine(): Promise<HighlightEngine> {
   // Every subpath below is also the grammar id, except `dockerfile`, whose
   // grammar registers as `docker`.
   const langs = await Promise.all([
+    import("@shikijs/langs/csharp"),
+    import("@shikijs/langs/razor"),
+    import("@shikijs/langs/java"),
     import("@shikijs/langs/typescript"),
     import("@shikijs/langs/tsx"),
     import("@shikijs/langs/javascript"),
@@ -288,19 +257,9 @@ function getEngine(): Promise<HighlightEngine> {
   return enginePromise;
 }
 
-/** Returns the last path segment of a file name, trimmed and lower-cased. */
-function lastSegment(name: string): string {
-  const parts = name.replace(/\\/g, "/").split("/");
-  return (parts[parts.length - 1] ?? "").trim().toLowerCase();
-}
-
 /** Reads a grammar out of a file name, by extension or by a bare `Dockerfile`. */
 function fromFileName(name: string): string | null {
-  const base = lastSegment(name);
-  if (base === "dockerfile" || base.startsWith("dockerfile.")) return "docker";
-  const dot = base.lastIndexOf(".");
-  if (dot <= 0) return null;
-  return EXTENSIONS[base.slice(dot + 1)] ?? null;
+  return fileHighlightLanguage(name);
 }
 
 /**
@@ -628,8 +587,8 @@ export default function contribute(server: PluginServerContext) {
 
       let diffLines: HighlightLine[] | undefined;
       if (input.diffBodyCode !== undefined) {
-        const diffLanguage = input.filename ? resolveLanguage(loaded, undefined, input.filename) : null;
-        diffLines = tokenize(highlighter, input.diffBodyCode, diffLanguage, input.dark, theme);
+        const diffLanguage = resolveLanguage(loaded, input.language === "diff" ? undefined : input.language, input.filename);
+        diffLines = tokenize(highlighter, input.diffBodyCode, diffLanguage === "diff" ? null : diffLanguage, input.dark, theme);
       }
 
       return {

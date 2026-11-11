@@ -15,17 +15,17 @@ export function PlanComparison({ agentId, callId, markdown, tokens }: {
   const candidates = useMemo(() => outlineEntries(history.rows)
     .filter(entry => entry.kind === "Plan" && (!callId || entry.callId !== callId)).reverse(), [history.rows, callId]);
   const selected = candidates.find(entry => entry.id === selectedId);
-  const diff = useMemo(() => selected ? buildUnifiedDiffText(markdown, selected.body) : "", [markdown, selected]);
+  const diff = useMemo(() => selected ? buildUnifiedDiffText(selected.body, markdown) : "", [markdown, selected]);
   const label = { color: tokens.foreground, fontFamily: tokens.fontUi, fontSize: tokens.fs(12) };
   const button = { ...label, color: tokens.accent };
   return <View style={{ padding: 12, gap: 12, borderWidth: 1, borderColor: tokens.borderSubtle, borderRadius: 8 }}>
     <Text style={{ ...label, fontWeight: "600" }}>Compare plans · Markdown changes</Text>
-    <Text style={label}>From: {planTitle(markdown)}</Text>
+    <Text style={label}>Current plan (new): {planTitle(markdown)}</Text>
     {selected ? <>
-      <Text style={label}>To: {selected.title} · {new Date(selected.timestamp).toLocaleString()}</Text>
-      <Text style={{ ...label, color: tokens.foregroundMuted }}>Red: removed from the open plan. Green: added in the selected plan.</Text>
+      <Text style={label}>Baseline (old): {selected.title} · {new Date(selected.timestamp).toLocaleString()}</Text>
+      <Text style={{ ...label, color: tokens.foregroundMuted }}>Green: added by the current plan. Red: removed by the current plan.</Text>
       <Pressable accessibilityRole="button" onPress={() => select(null)}><Text style={button}>Choose another plan</Text></Pressable>
-      {diff ? <SyntaxHighlightBlock code={diff} language="diff" tokens={tokens} showLineNumbers={false} compact />
+      {diff ? <SyntaxHighlightBlock code={diff} language="diff" filename="plan.md" tokens={tokens} showLineNumbers={false} compact />
         : <Text style={{ ...label, color: tokens.success }}>No Markdown differences.</Text>}
     </> : <>
       <Text style={{ ...label, color: tokens.foregroundMuted }}>Choose another plan from this conversation. Plans are not paired automatically.</Text>
