@@ -574,7 +574,7 @@ export function LiveToolCallRenderer({
           : undefined;
 
     return {
-      id: `live-${rawName}`,
+      id: data.callId ?? runKey,
       tool: toolKind,
       title,
       status:
@@ -610,7 +610,7 @@ export function LiveToolCallRenderer({
       paseo,
       github,
     };
-  }, [data, codexAsk.questions, codexAsk.transcript]);
+  }, [data, runKey, codexAsk.questions, codexAsk.transcript]);
 
   useEffect(() => {
     if (calloutData.plan) {
