@@ -188,6 +188,12 @@ Ask an agent to use its question tool, with one question and then with several
 
 ## Current verification status
 
+Run `node tests/plan-history.test.cjs` to verify that mounting and reprojecting
+two different plans converges without repeated history invalidation. On a long
+conversation containing multiple plans, enable Refined Chat with grouping both
+on and off: the conversation should remain responsive, and each plan should open
+its own text in the side panel and comparison picker.
+
 Run the focused parser, archive and collapse tests with
 `node tests/ask-question.test.cjs`, `node tests/question-archive.test.cjs` and
 `node tests/tool-collapse.test.cjs`. `npm run typecheck` must also pass.

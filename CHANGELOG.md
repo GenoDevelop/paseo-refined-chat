@@ -5,6 +5,9 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 
 ## [Unreleased]
 
+### Fixed
+- Multiple plan cards no longer overwrite one shared `live-plan` identity and repeatedly invalidate the conversation. Tool cards use their actual call ID, keeping plan history, side-panel updates and comparison scoped to the correct call.
+
 ### Added
 - Group headers count plans separately from other tools; plans keep the existing Other tools collapse settings.
 - Diff blocks offer inline / side by side views and a fullscreen viewer, closed with its button, Escape on web or native back. The fullscreen viewer uses an opaque theme background and a single fixed toolbar. Copy preserves the original unified diff.
