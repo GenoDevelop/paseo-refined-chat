@@ -9,6 +9,7 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 - Multiple plan cards no longer overwrite one shared `live-plan` identity and repeatedly invalidate the conversation. Tool cards use their actual call ID, keeping plan history, side-panel updates and comparison scoped to the correct call.
 
 ### Added
+- Experimental iOS prose selection reuses the installed enriched Markdown component with plugin typography. Compatible paragraphs, headings, lists and quotes share a selection area within an answer; prompts support partial selection too. Clipboard change notifications reset selection without reading clipboard contents or matching localized menu labels. Rich links, paths and unsupported blocks retain their existing renderer. Android and web retain their original text tree. Selection and reset were confirmed on an iPad; broader device validation is ongoing.
 - Group headers count plans separately from other tools; plans keep the existing Other tools collapse settings.
 - Diff blocks offer inline / side by side views and a fullscreen viewer, closed with its button, Escape on web or native back. The fullscreen viewer uses an opaque theme background and a single fixed toolbar. Copy preserves the original unified diff.
 - Diff bodies retain source-language syntax colours, with backgrounds and markers indicating changes. C#, Razor and Java grammars are supported; unknown file types use neutral text rather than monochrome red/green.

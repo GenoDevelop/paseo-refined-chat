@@ -1,3 +1,4 @@
+import { IOSSelectableProse, selectableProseMarkdown, isSelectableProseBlock } from "../ios-selectable-prose";
 import React, { createContext, useContext, useMemo, useState } from "react";
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from "react-native";
 import type { TextStyle, ViewStyle } from "react-native";
@@ -309,9 +310,39 @@ export function MarkdownView({
 
   // Pictures that follow one another sit in one row that wraps, not one under
   // the other: a reply with several screenshots reads as a strip, not a column.
+  const sourceLines = useMemo(() => text.replace(/\r\n?/g, "\n").split("\n"), [text]);
   const rendered: React.ReactNode[] = [];
   for (let index = 0; index < blocks.length; index++) {
     const block = blocks[index]!;
+    if (Platform.OS === "ios" && isSelectableProseBlock(block) && marked !== index) {
+      const fallback: React.ReactNode[] = [];
+      let end = index;
+      while (end < blocks.length && end !== marked && isSelectableProseBlock(blocks[end]!)) {
+        const next = blocks[end]!;
+        fallback.push(next.kind === "paragraph"
+          ? <Text key={`p${end}`} selectable style={styles.paragraph}>{renderInline(next.spans, styles, `p${end}`)}</Text>
+          : renderBlock(next, `p${end}`, end === 0, context));
+        end++;
+      }
+      const markdown = sourceLines.slice(starts[index], starts[end] ?? sourceLines.length).join("\n").trimEnd();
+      const body = styles.paragraph;
+      rendered.push(<IOSSelectableProse key={`prose${index}`} markdown={markdown} textStyle={body}
+        paragraphGap={metrics.blockGap} inlineStyles={{ strong: styles.strong, emphasis: styles.emphasis, code: styles.codeSpan }}
+        blockStyles={{
+          h1: { ...styles.h1, marginTop: metrics.blockGap, marginBottom: metrics.blockGap },
+          h2: { ...styles.h2, marginTop: metrics.blockGap, marginBottom: metrics.blockGap },
+          h3: { ...styles.h3, marginTop: metrics.blockGap, marginBottom: metrics.blockGap },
+          h4: { ...styles.h4, marginTop: metrics.blockGap, marginBottom: metrics.blockGap },
+          h5: { ...styles.h4, marginTop: metrics.blockGap, marginBottom: metrics.blockGap },
+          h6: { ...styles.h4, marginTop: metrics.blockGap, marginBottom: metrics.blockGap },
+          list: { ...body, marginTop: 0, marginBottom: metrics.blockGap, itemSpacing: metrics.itemGap },
+          blockquote: { ...body, ...styles.quoteText, marginTop: 0, marginBottom: metrics.blockGap },
+        }}>
+        <View style={{ gap: metrics.blockGap }}>{fallback}</View>
+      </IOSSelectableProse>);
+      index = end - 1;
+      continue;
+    }
     if (block.kind !== "image") {
       const node = renderBlock(block, `b${index}`, index === 0, context);
       rendered.push(index === marked ? markBlock(node, index) : node);
@@ -594,12 +625,14 @@ function renderBlock(
       );
     }
 
-    case "paragraph":
-      return (
-        <Text key={key} selectable style={styles.paragraph}>
-          {renderInline(block.spans, styles, key)}
-        </Text>
-      );
+    case "paragraph": {
+      const original = <Text key={key} selectable style={styles.paragraph}>{renderInline(block.spans, styles, key)}</Text>;
+      if (Platform.OS !== "ios") return original;
+      const markdown = selectableProseMarkdown(block.spans);
+      return markdown !== null ? <IOSSelectableProse key={key} markdown={markdown} textStyle={styles.paragraph}
+        inlineStyles={{ strong: styles.strong, emphasis: styles.emphasis, code: styles.codeSpan }}>{original}</IOSSelectableProse>
+        : <React.Fragment key={key}>{original}</React.Fragment>;
+    }
 
     case "list": {
       const numberWidth = orderedColumnWidth(block.items, metrics);
