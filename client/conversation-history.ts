@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePaseo } from "@getpaseo/plugin/client";
-import type { PaseoAgentTimelineRefetchOptions } from "@getpaseo/client";
+type AgentHistoryHandle = ReturnType<ReturnType<typeof usePaseo>["agents"]["ref"]>;
+type HistoryCursor = NonNullable<Parameters<AgentHistoryHandle["timeline"]["refetch"]>[0]>["cursor"];
 import type { OutlineRow } from "./conversation-outline";
 
 interface History {
   rows: OutlineRow[];
   epoch: string;
-  cursor: PaseoAgentTimelineRefetchOptions["cursor"];
+  cursor: HistoryCursor;
   older: boolean;
 }
 const empty = (): History => ({ rows: [], epoch: "", cursor: undefined, older: false });
@@ -21,7 +22,7 @@ export function useConversationHistory(agentId: string) {
   const [error, setError] = useState("");
   const generation = useRef(0);
   const busy = useRef(false);
-  const load = useCallback(async (cursor?: PaseoAgentTimelineRefetchOptions["cursor"]) => {
+  const load = useCallback(async (cursor?: HistoryCursor) => {
     if (busy.current) return;
     busy.current = true;
     const ticket = generation.current;
