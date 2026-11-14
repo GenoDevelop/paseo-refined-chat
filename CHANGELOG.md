@@ -5,7 +5,12 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 
 ## [Unreleased]
 
-## [0.6.0] - 2026-11-14
+## [0.6.1] - 2026-11-14
+
+### Fixed
+- Clean Git installations no longer need to resolve a direct type-only import from `@getpaseo/client`; history cursor types are inferred through the supported plugin SDK.
+
+## [0.6.0] - 2026-11-14 (withdrawn: clean-install issue)
 
 ### Fixed
 - Multiple plan cards no longer overwrite one shared `live-plan` identity and repeatedly invalidate the conversation. Tool cards use their actual call ID, keeping plan history, side-panel updates and comparison scoped to the correct call.
