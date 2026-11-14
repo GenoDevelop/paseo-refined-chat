@@ -5,7 +5,7 @@ Oh My Pi and others that Paseo drives): tool calls, reasoning, prompts, approval
 typed, syntax-aware cards that follow the active Paseo theme, and you decide how big the text is, what
 folds, and how it is coloured. Coverage of specialised events can differ by provider.
 
-![A turn in Refined Chat: a prompt, a command card, a folded read, and a reply with a coloured accent, bold text and a highlight mark](images/hero.png)
+![Refined Chat with sample data: a prompt, a file read, a task result and a formatted reply](images/hero.png)
 
 - **Three independent text sizes** for replies, tool cards and code, plus reply line spacing.
 - **You choose what folds**: which card kinds start collapsed, which fold when they finish, and how long
@@ -14,6 +14,10 @@ folds, and how it is coloured. Coverage of specialised events can differ by prov
   one palette or any hex.
 - **Readable cards** for shell, git, read, write, edit, MCP, eval, subagents, hub and Paseo tools,
   with a one-line summary of what each did.
+- **Conversation outline** with search, type filters and navigation to history.
+- **Plan history** with Markdown preview, copy/export and manual comparison.
+- **Diff views** with source syntax colours, side by side layout and fullscreen.
+- **Native iOS selection** within compatible prose and prompts, confirmed on iPad; selection stops at separate messages and unsupported blocks.
 - **Images** in replies and image reads, with a viewer.
 - **Links** that show where they go and warn when the text disagrees with the target.
 - A read-only **file preview** in the side panel for a path in a reply or on a tool card, with the line marked.
@@ -48,10 +52,10 @@ paseo plugin add git:GenoDevelop/paseo-refined-chat
 Or pin a published release by its tag:
 
 ```bash
-paseo plugin add git:GenoDevelop/paseo-refined-chat --ref v0.5.0
+paseo plugin add git:GenoDevelop/paseo-refined-chat --ref v0.6.0
 ```
 
-Requires **Paseo 0.11.0 or later**. Everything below is configured in
+Requires **Paseo 0.14.0 or later**. Everything below is configured in
 **Settings → Plugins → Refined Chat**, and each setting is stored on the client you change it on.
 
 ---

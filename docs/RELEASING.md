@@ -57,8 +57,8 @@ Disable/remove the test plugin after verification.
 ## 3. Verify the catalog image
 
 Visual plugins require at least one **current, truthful screenshot**.
-`images/hero.png` shows a turn in Refined Chat (a prompt, a command card, a
-folded read, and a reply with the accent, bold and highlight colours), and the
+`images/hero.png` shows a turn in Refined Chat (a prompt, a file read, a task
+result and a formatted reply), and the
 README adds three more under `docs/images`. None shows the File preview side
 panel, which arrived in 0.5.0.
 
