@@ -188,6 +188,17 @@ Ask an agent to use its question tool, with one question and then with several
 
 ## Current verification status
 
+Experimental iOS selection: run `node tests/ios-selectable-prose.test.cjs`.
+On a native iPad, select across adjacent prose paragraphs, including bold and
+inline code, copy using the system menu, then immediately select another range
+in the same message and in a prompt. Repeat with another system language.
+Copy should appear once and the previous selection should clear. Clipboard
+content is never read by the selection reset listener. If the private Expo
+module is unavailable, automatic reset is unsupported. Check Android and web
+retain their original selection behavior. Selection across separate timeline
+messages is not implemented. Rich links, paths and other blocks still use the
+existing renderer; this feature is not ready for merge without device checks.
+
 Run `node tests/plan-history.test.cjs` to verify that mounting and reprojecting
 two different plans converges without repeated history invalidation. On a long
 conversation containing multiple plans, enable Refined Chat with grouping both

@@ -1,3 +1,4 @@
+import { IOSSelectableProse, selectableProseMarkdown } from "../ios-selectable-prose";
 import React, { createContext, useContext, useMemo, useState } from "react";
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from "react-native";
 import type { TextStyle, ViewStyle } from "react-native";
@@ -312,6 +313,28 @@ export function MarkdownView({
   const rendered: React.ReactNode[] = [];
   for (let index = 0; index < blocks.length; index++) {
     const block = blocks[index]!;
+    if (Platform.OS === "ios" && block.kind === "paragraph" && marked !== index) {
+      const prose: string[] = [];
+      const fallback: React.ReactNode[] = [];
+      let end = index;
+      while (end < blocks.length && end !== marked) {
+        const next = blocks[end]!;
+        if (next.kind !== "paragraph") break;
+        const markdown = selectableProseMarkdown(next.spans);
+        if (markdown === null) break;
+        prose.push(markdown);
+        fallback.push(<Text key={`p${end}`} selectable style={styles.paragraph}>{renderInline(next.spans, styles, `p${end}`)}</Text>);
+        end++;
+      }
+      if (prose.length) {
+        rendered.push(<IOSSelectableProse key={`prose${index}`} markdown={prose.join("\n\n")} textStyle={styles.paragraph}
+          paragraphGap={metrics.blockGap} inlineStyles={{ strong: styles.strong, emphasis: styles.emphasis, code: styles.codeSpan }}>
+          <View style={{ gap: metrics.blockGap }}>{fallback}</View>
+        </IOSSelectableProse>);
+        index = end - 1;
+        continue;
+      }
+    }
     if (block.kind !== "image") {
       const node = renderBlock(block, `b${index}`, index === 0, context);
       rendered.push(index === marked ? markBlock(node, index) : node);
@@ -594,12 +617,14 @@ function renderBlock(
       );
     }
 
-    case "paragraph":
-      return (
-        <Text key={key} selectable style={styles.paragraph}>
-          {renderInline(block.spans, styles, key)}
-        </Text>
-      );
+    case "paragraph": {
+      const original = <Text key={key} selectable style={styles.paragraph}>{renderInline(block.spans, styles, key)}</Text>;
+      if (Platform.OS !== "ios") return original;
+      const markdown = selectableProseMarkdown(block.spans);
+      return markdown !== null ? <IOSSelectableProse key={key} markdown={markdown} textStyle={styles.paragraph}
+        inlineStyles={{ strong: styles.strong, emphasis: styles.emphasis, code: styles.codeSpan }}>{original}</IOSSelectableProse>
+        : <React.Fragment key={key}>{original}</React.Fragment>;
+    }
 
     case "list": {
       const numberWidth = orderedColumnWidth(block.items, metrics);
