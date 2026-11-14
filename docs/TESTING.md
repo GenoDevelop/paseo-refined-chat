@@ -197,7 +197,11 @@ content is never read by the selection reset listener. If the private Expo
 module is unavailable, automatic reset is unsupported. Check Android and web
 retain their original selection behavior. Selection across separate timeline
 messages is not implemented. Rich links, paths and other blocks still use the
-existing renderer; this feature is not ready for merge without device checks.
+existing renderer. The owner confirmed partial selection, cross-block selection
+within one answer and copy/reset on the native iPad app. Cross-message selection
+was investigated and intentionally left out. Android and web visual regression
+checks and additional iOS versions remain unverified. The adapter uses private
+React/Expo bindings and may fall back to the existing renderer on another host.
 
 Run `node tests/plan-history.test.cjs` to verify that mounting and reprojecting
 two different plans converges without repeated history invalidation. On a long
