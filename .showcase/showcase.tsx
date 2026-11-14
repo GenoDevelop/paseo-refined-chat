@@ -1,3 +1,4 @@
+import { DEFAULT_PREFERENCES } from "../client/preferences";
 /**
  * Offline showcase used only to capture README screenshots.
  *
@@ -45,6 +46,7 @@ const DARK = {
 };
 
 const PREFERENCES = {
+  ...DEFAULT_PREFERENCES,
   accent: "host" as const,
   uiFont: "inter" as const,
   codeFont: "code" as const,
