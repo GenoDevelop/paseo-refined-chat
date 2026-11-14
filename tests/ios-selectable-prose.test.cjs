@@ -8,6 +8,21 @@ const js = ts.transpileModule(fs.readFileSync(require.resolve("../client/compone
 }).outputText;
 new Function("exports", "require", "module", js)(moduleUnderTest.exports, name => name === "react/jsx-runtime" ? require(name) : {}, moduleUnderTest);
 const { findNativeProse } = moduleUnderTest.exports;
+test("Headings, lists and quotes can join prose while interactive and unsupported blocks remain boundaries", () => {
+  const { isSelectableProseBlock } = moduleUnderTest.exports;
+  const spans = [{ kind: "text", text: "Section" }];
+  for (const block of [
+    { kind: "heading", level: 2, spans }, { kind: "paragraph", spans },
+    { kind: "quote", paragraphs: [spans] },
+    { kind: "list", items: [{ spans, depth: 0, ordered: true, index: 1 }] },
+  ]) assert.equal(isSelectableProseBlock(block), true);
+  for (const block of [
+    { kind: "code", code: "test", language: "ts" }, { kind: "table" }, { kind: "image" },
+    { kind: "list", items: [{ spans, checked: true }] },
+    { kind: "heading", spans: [{ kind: "link", href: "https://example.com", spans }] },
+    { kind: "quote", paragraphs: [[{ kind: "codeSpan", text: "src/file.ts" }]] },
+  ]) assert.equal(isSelectableProseBlock(block), false);
+});
 test("Clipboard notifications reset every selection without reading contents or menu labels", () => {
   const { subscribeClipboardSelectionReset, clipboardSelectionSnapshot } = moduleUnderTest.exports;
   const previous = globalThis.expo;

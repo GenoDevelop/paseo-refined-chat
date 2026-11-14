@@ -189,8 +189,8 @@ Ask an agent to use its question tool, with one question and then with several
 ## Current verification status
 
 Experimental iOS selection: run `node tests/ios-selectable-prose.test.cjs`.
-On a native iPad, select across adjacent prose paragraphs, including bold and
-inline code, copy using the system menu, then immediately select another range
+On a native iPad, select across adjacent prose paragraphs, headings, lists and
+quotes, including bold and inline code, copy using the system menu, then immediately select another range
 in the same message and in a prompt. Repeat with another system language.
 Copy should appear once and the previous selection should clear. Clipboard
 content is never read by the selection reset listener. If the private Expo

@@ -1,7 +1,16 @@
 import React, { useRef, useSyncExternalStore } from "react";
 import { Platform, StyleSheet, View, type TextStyle, type StyleProp } from "react-native";
 import { Markdown } from "@getpaseo/plugin/client/ui";
-import type { MdInline } from "./markdown/parse";
+import type { MdBlock, MdInline } from "./markdown/parse";
+
+export function isSelectableProseBlock(block: MdBlock): boolean {
+  switch (block.kind) {
+    case "paragraph": case "heading": return selectableProseMarkdown(block.spans) !== null;
+    case "quote": return block.paragraphs.every(spans => selectableProseMarkdown(spans) !== null);
+    case "list": return block.items.every(item => item.checked === undefined && selectableProseMarkdown(item.spans) !== null);
+    default: return false;
+  }
+}
 
 export function selectableProseMarkdown(spans: MdInline[]): string | null {
   const parts: string[] = [];
@@ -81,10 +90,11 @@ export function findNativeProse(root: Fiber): NativeTemplate | null {
 }
 
 /** Experimental iOS adapter: reuse the installed native view and its own schema. */
-export function IOSSelectableProse({ markdown, textStyle, inlineStyles, paragraphGap = 0, children }: {
+export function IOSSelectableProse({ markdown, textStyle, inlineStyles, blockStyles, paragraphGap = 0, children }: {
   markdown: string; textStyle: StyleProp<TextStyle>; children: React.ReactNode;
   inlineStyles?: { strong: TextStyle; emphasis: TextStyle; code: TextStyle };
   paragraphGap?: number;
+  blockStyles?: Record<string, Record<string, unknown>>;
 }) {
   const current = useSyncExternalStore(subscribe, () => template, () => null);
   const probe = useRef<View>(null);
@@ -95,11 +105,13 @@ export function IOSSelectableProse({ markdown, textStyle, inlineStyles, paragrap
     const base = current.props.markdownStyle as Record<string, unknown>;
     const paragraph = { ...(base.paragraph as object), fontFamily: style.fontFamily,
       fontSize: style.fontSize, lineHeight: style.lineHeight, color: style.color, marginTop: 0, marginBottom: paragraphGap };
+    const blocks = Object.fromEntries(Object.entries(blockStyles || {}).map(([key, value]) =>
+      [key, { ...(base[key] as object), ...value }]));
     return React.createElement(current.type, { ...current.props, markdown, selectable: true,
       // CommonMark keeps the prose in one native text view rather than GFM's
       // separate block slots, allowing a selection across paragraph boundaries.
       flavor: "commonmark", key: selectionEpoch,
-      allowFontScaling: false, enableLinkPreview: false, markdownStyle: { ...base, paragraph,
+      allowFontScaling: false, enableLinkPreview: false, markdownStyle: { ...base, ...blocks, paragraph,
         ...(inlineStyles ? {
           strong: { ...(base.strong as object), ...inlineStyles.strong },
           emphasis: { ...(base.emphasis as object), ...inlineStyles.emphasis },
