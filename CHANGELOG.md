@@ -5,6 +5,9 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 
 ## [Unreleased]
 
+### Added
+- HEX color swatches in rendered prose and inline code, with an enlarged preview, transparency checkerboard, RGB/HSL values and HEX copying. Native iOS selectable prose retains its existing renderer.
+
 ## [0.6.1] - 2026-11-14
 
 ### Fixed

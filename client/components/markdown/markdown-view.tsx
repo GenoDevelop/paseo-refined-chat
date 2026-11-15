@@ -1,3 +1,4 @@
+import { ColorPreview, ColorText } from "./color-preview";
 import { IOSSelectableProse, selectableProseMarkdown, isSelectableProseBlock } from "../ios-selectable-prose";
 import React, { createContext, useContext, useMemo, useState } from "react";
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from "react-native";
@@ -377,9 +378,9 @@ export function MarkdownView({
   }
 
   return (
-    <View {...selectionSurface} style={styles.root}>
+    <ColorPreview tokens={tokens}><View {...selectionSurface} style={styles.root}>
       {rendered}
-    </View>
+    </View></ColorPreview>
   );
 }
 
@@ -836,7 +837,7 @@ function CodeSpan({ text, style }: { text: string; style: TextStyle }) {
   if (!reveal || !kind) {
     return (
       <Text selectable style={style}>
-        {text}
+        <ColorText text={text} />
       </Text>
     );
   }
@@ -862,7 +863,7 @@ function renderInline(
     const key = `${keyPrefix}i${index}`;
     switch (span.kind) {
       case "text":
-        return span.text;
+        return <ColorText key={key} text={span.text} />;
       case "codeSpan":
         return <CodeSpan key={key} text={span.text} style={styles.codeSpan} />;
       case "strong":
