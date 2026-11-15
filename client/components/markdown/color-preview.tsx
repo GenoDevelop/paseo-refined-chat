@@ -29,8 +29,8 @@ export function ColorPreview({ tokens, children }: { tokens: ExtendedThemeTokens
     </Modal>}
   </ColorContext.Provider>;
 }
-export function ColorText({ text }: { text: string }) {
-  const open = useContext(ColorContext), matches = hexMatches(text);
+export function ColorText({ text, prefix = "" }: { text: string; prefix?: string }) {
+  const open = useContext(ColorContext), matches = hexMatches(text, prefix);
   if (!open || !matches.length) return <>{text}</>;
   const parts: React.ReactNode[] = []; let end = 0;
   for (const match of matches) {

@@ -830,14 +830,14 @@ export const RevealPathContext = createContext<((path: string, kind: PathKind) =
  * link hover. Only a reveal: nothing is run, and a path that does not exist does
  * nothing.
  */
-function CodeSpan({ text, style }: { text: string; style: TextStyle }) {
+function CodeSpan({ text, style, prefix = "", suppressColors = false }: { text: string; style: TextStyle; prefix?: string; suppressColors?: boolean }) {
   const reveal = useContext(RevealPathContext);
   const { pathOpens } = useEnhancerPreferences();
   const kind = reveal ? pathKind(text) : null;
   if (!reveal || !kind) {
     return (
       <Text selectable style={style}>
-        <ColorText text={text} />
+        {suppressColors ? text : <ColorText text={text} prefix={prefix} />}
       </Text>
     );
   }
@@ -858,37 +858,42 @@ function renderInline(
   spans: MdInline[],
   styles: MarkdownStyles,
   keyPrefix: string,
+  prefix = "",
+  suppressColors = false,
 ): React.ReactNode[] {
+  let preceding = prefix;
   return spans.map((span, index) => {
     const key = `${keyPrefix}i${index}`;
+    const before = preceding;
+    preceding += inlineText([span]);
     switch (span.kind) {
       case "text":
-        return <ColorText key={key} text={span.text} />;
+        return suppressColors ? span.text : <ColorText key={key} text={span.text} prefix={before} />;
       case "codeSpan":
-        return <CodeSpan key={key} text={span.text} style={styles.codeSpan} />;
+        return <CodeSpan key={key} text={span.text} style={styles.codeSpan} prefix={before} suppressColors={suppressColors} />;
       case "strong":
         return (
           <Text key={key} selectable style={styles.strong}>
-            {renderInline(span.spans, styles, key)}
+            {renderInline(span.spans, styles, key, before, suppressColors)}
           </Text>
         );
       case "emphasis":
         return (
           <Text key={key} selectable style={styles.emphasis}>
-            {renderInline(span.spans, styles, key)}
+            {renderInline(span.spans, styles, key, before, suppressColors)}
           </Text>
         );
       case "strike":
         return (
           <Text key={key} selectable style={styles.strike}>
-            {renderInline(span.spans, styles, key)}
+            {renderInline(span.spans, styles, key, before, suppressColors)}
           </Text>
         );
       case "mark":
-        if (!styles.mark) return ["==", ...renderInline(span.spans, styles, key), "=="];
+        if (!styles.mark) return ["==", ...renderInline(span.spans, styles, key, before, suppressColors), "=="];
         return (
           <Text key={key} selectable style={styles.mark}>
-            {renderInline(span.spans, styles, key)}
+            {renderInline(span.spans, styles, key, before, suppressColors)}
           </Text>
         );
       case "link":
@@ -945,7 +950,7 @@ function MarkdownLink({
           ? linkProps(href, inlineText(spans))
           : null)}
     >
-      {renderInline(spans, styles, "l")}
+      {renderInline(spans, styles, "l", "", /^https?:\/\/(?:www\.)?github\.com\//i.test(href))}
     </Text>
   );
 }

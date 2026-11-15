@@ -1,5 +1,5 @@
-export function hexMatches(text: string): Array<{ index: number; hex: string }> {
-  return Array.from(text.matchAll(/(?<![\p{L}\p{N}_/#?=&%.-])#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{4}|[0-9a-f]{3})(?![\p{L}\p{N}_-])/giu), m => ({ index: m.index!, hex: m[0] }));
+export function hexMatches(text: string, prefix = ""): Array<{ index: number; hex: string }> {
+  return Array.from(text.matchAll(/(?<![\p{L}\p{N}_/#?=&%.-])#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{4}|[0-9a-f]{3})(?![\p{L}\p{N}_-])/giu), m => ({ index: m.index!, hex: m[0] })).filter(m => !/^#[0-9]+$/.test(m.hex) || !/(?:\b(?:pr|pull[ \t]+requests?|issues?)|\b(?:refs?|fix(?:es)?|clos(?:e[sd]?|ing)|resolves?))[ \t]*(?:[:\u2013\u2014-][ \t]*)?$/i.test(prefix + text.slice(0, m.index)));
 }
 export function hexChannels(hex: string) {
   let value = hex.slice(1);

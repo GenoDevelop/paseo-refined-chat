@@ -5,6 +5,9 @@ The project is an independent MIT-licensed fork of Beautiful Chat.
 
 ## [Unreleased]
 
+### Fixed
+- Do not show HEX swatches for contextual PR/issue numbers or GitHub link labels, including numbers inside formatted text and inline code.
+
 ### Added
 - HEX color swatches in rendered prose and inline code, with an enlarged preview, transparency checkerboard, RGB/HSL values and HEX copying. Native iOS selectable prose retains its existing renderer.
 
